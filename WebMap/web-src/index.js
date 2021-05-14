@@ -56,6 +56,8 @@ const fetchConfig = fetch('config').then(res => res.json()).then(config => {
 });
 
 const setup = async () => {
+
+	console.log("setup()");
 	websocket.init();
 	players.init();
 

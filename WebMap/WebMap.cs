@@ -13,7 +13,7 @@ namespace WebMap {
     //This attribute is required, and lists metadata for your plugin.
     //The GUID should be a unique ID for this plugin, which is human readable (as it is used in places like the config). I like to use the java package notation, which is "com.[your name here].[your plugin name here]"
     //The name is the name of the plugin that's displayed on load, and the version number just specifies what version the plugin is.
-    [BepInPlugin("com.kylepaulsen.valheim.webmap", "WebMap", "1.2.0")]
+    [BepInPlugin("no.runnane.valheim.webmap", "WebMap", "2.0.0")]
 
     //This is the main declaration of our plugin class. BepInEx searches for all classes inheriting from BaseUnityPlugin to initialize on startup.
     //BaseUnityPlugin itself inherits from MonoBehaviour, so you can use this as a reference for what you can declare and use in your plugin class: https://docs.unity3d.com/ScriptReference/MonoBehaviour.html
@@ -29,7 +29,7 @@ namespace WebMap {
 
         //The Awake() method is run at the very start when the game is initialized.
         public void Awake() {
-            var harmony = new Harmony("com.kylepaulsen.valheim.webmap");
+            var harmony = new Harmony("no.runnane.valheim.webmap");
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), (string) null);
 
             var pluginPath = System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -77,6 +77,8 @@ namespace WebMap {
             InvokeRepeating("UpdateFogTexture", WebMapConfig.UPDATE_FOG_TEXTURE_INTERVAL, WebMapConfig.UPDATE_FOG_TEXTURE_INTERVAL);
             InvokeRepeating("SaveFogTexture", WebMapConfig.SAVE_FOG_TEXTURE_INTERVAL, WebMapConfig.SAVE_FOG_TEXTURE_INTERVAL);
 
+            InvokeRepeating("SavePinsIfNeeded", WebMapConfig.UPDATE_FOG_TEXTURE_INTERVAL, WebMapConfig.UPDATE_FOG_TEXTURE_INTERVAL);
+
             var mapPinsFile = Path.Combine(worldDataPath, "pins.csv");
             try {
                 var pinsLines = File.ReadAllLines(mapPinsFile);
@@ -86,10 +88,23 @@ namespace WebMap {
             }
         }
 
+        public void SavePinsIfNeeded()
+        {
+            if (mapDataServer.NeedSave)
+            {
+                SavePins();
+                mapDataServer.NeedSave = false;
+            }
+        }
+        
+
+
         public void UpdateFogTexture() {
+            //Debug.Log("WebMap: UpdateFogTexture()");
             int pixelExploreRadius = (int)Mathf.Ceil(WebMapConfig.EXPLORE_RADIUS / WebMapConfig.PIXEL_SIZE);
             int pixelExploreRadiusSquared = pixelExploreRadius * pixelExploreRadius;
             var halfTextureSize = WebMapConfig.TEXTURE_SIZE / 2;
+          //  Color transparentWhite = new Color(0, 0, 0, 0);
 
             mapDataServer.players.ForEach(player => {
                 if (player.m_publicRefPos) {
@@ -111,7 +126,7 @@ namespace WebMap {
                                         var fogTexColor = mapDataServer.fogTexture.GetPixel(x, y);
                                         if (fogTexColor.r < 1f) {
                                             fogTextureNeedsSaving = true;
-                                            mapDataServer.fogTexture.SetPixel(x, y, Color.white);
+                                            mapDataServer.fogTexture.SetPixel(x, y, Color.clear);
                                         }
                                     }
                                 }
@@ -123,6 +138,7 @@ namespace WebMap {
         }
 
         public void SaveFogTexture() {
+            //Debug.Log("WebMap: SaveFogTexture()");
             if (mapDataServer.players.Count > 0 && fogTextureNeedsSaving) {
                 byte[] pngBytes = mapDataServer.fogTexture.EncodeToPNG();
 
@@ -130,6 +146,7 @@ namespace WebMap {
                 try {
                     File.WriteAllBytes(Path.Combine(worldDataPath, "fog.png"), pngBytes);
                     fogTextureNeedsSaving = false;
+                   // Debug.Log("WebMap: Wrote fog file");
                 } catch {
                     Debug.Log("WebMap: FAILED TO WRITE FOG FILE!");
                 }
@@ -137,9 +154,11 @@ namespace WebMap {
         }
 
         public static void SavePins() {
+            Debug.Log("WebMap: SavePins()");
             var mapPinsFile = Path.Combine(worldDataPath, "pins.csv");
             try {
                 File.WriteAllLines(mapPinsFile, mapDataServer.pins);
+                Debug.Log("WebMap: Wrote pins file");
             } catch {
                 Debug.Log("WebMap: FAILED TO WRITE PINS FILE!");
             }
@@ -341,6 +360,9 @@ namespace WebMap {
                         string message = package.ReadString();
                         message = (message == null ? "" : message).Trim();
 
+                        //Debug.Log("WebMap.cs: SayMethod: " + pos + " | " + messageType + " | " + userName + " | " + message);
+
+
                         if (message.StartsWith("/pin")) {
                             var messageParts = message.Split(' ');
                             var pinType = "dot";
@@ -357,9 +379,10 @@ namespace WebMap {
                                 pinText = pinText.Substring(0, 20);
                             }
                             var safePinsText = Regex.Replace(pinText, @"[^a-zA-Z0-9 ]", "");
-
-                            var timestamp = DateTime.Now - unixEpoch;
-                            var pinId = $"{timestamp.TotalMilliseconds}-{UnityEngine.Random.Range(1000, 9999)}";
+                            var uuId = Guid.NewGuid();
+                            //var timestamp = DateTime.Now - unixEpoch;
+                            // var pinId = $"{timestamp.TotalMilliseconds}-{UnityEngine.Random.Range(1000, 9999)}";
+                            var pinId = uuId.ToString();
                             mapDataServer.AddPin(steamid, pinId, pinType, userName, pos, safePinsText);
 
                             var usersPins = mapDataServer.pins.FindAll(pin => pin.StartsWith(steamid));
@@ -400,13 +423,13 @@ namespace WebMap {
                         Vector3 pos = package.ReadVector3();
                         int messageType = package.ReadInt();
                         string userName = package.ReadString();
-                        // string message = package.ReadString();
-                        // message = (message == null ? "" : message).Trim();
+                        string message = package.ReadString();
+                        message = (message == null ? "" : message).Trim();
 
                         if (messageType == (int)Talker.Type.Ping) {
                             mapDataServer.BroadcastPing(data.m_senderPeerID, userName, pos);
                         }
-                        // Debug.Log("CHAT!!! " + pos + " | " + messageType + " | " + userName + " | " + message);
+                        Debug.Log("WebMap.cs: CHAT!!! " + pos + " | " + messageType + " | " + userName + " | " + message);
                     } catch {}
                 }
             }

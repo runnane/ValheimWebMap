@@ -62,12 +62,22 @@ const setFollowIcon = (iconObj) => {
 };
 
 const updateIcons = () => {
+	//console.log("updateIcons()");
 	mapIcons.forEach(iconObj => {
 		let firstRender = false;
 		if (!iconObj.el) {
 			firstRender = true;
+			//console.log("rendering icon");
+			//console.log(iconObj);
 			iconObj.el = createIconEl(iconObj);
+
+
 			map.appendChild(iconObj.el);
+			iconObj.el.addEventListener("click", function(e) {
+				console.log(e)
+				console.log("icon clicked");
+				console.log(iconObj);
+			}, false)
 		}
 		const isIconHidden = hiddenIcons[iconObj.type];
 		iconObj.el.style.display = isIconHidden ? 'none' : 'block';
@@ -92,6 +102,14 @@ window.addEventListener('mousemove', e => {
 	const x = pixelSize * (-coordOffset + (e.clientX - map.offsetLeft) / canvasOffsetScale);
 	const y = pixelSize * (height - coordOffset + (map.offsetTop - e.clientY) / canvasOffsetScale);
 	ui.coords.textContent = `${x.toFixed(2)} , ${y.toFixed(2)}`;
+});
+
+window.addEventListener('mousedown', e => {
+
+	const canvasOffsetScale = map.offsetWidth / width;
+	const x = pixelSize * (-coordOffset + (e.clientX - map.offsetLeft) / canvasOffsetScale);
+	const y = pixelSize * (height - coordOffset + (map.offsetTop - e.clientY) / canvasOffsetScale);
+	console.log("mousedown, create at ", x.toFixed(2), y.toFixed(2))
 });
 
 const addIcon = (iconObj, update = true) => {
