@@ -86,9 +86,13 @@
             });
             var bounds = [[-12300,-12300], [12300,12300]];
 
-            mapLayer = L.imageOverlay(ws_override + 'map', bounds).setOpacity(0).addTo(map);
-            fogLayer = L.imageOverlay(ws_override + 'fog', bounds).addTo(map);
-            mapLayer.setOpacity(1);
+
+            mapLayer = L.imageOverlay(ws_override + 'map', bounds, {opacity: 0, zIndex:0}).addTo(map);
+            fogLayer = L.imageOverlay(ws_override + 'fog', bounds, {opacity: 1, zIndex:1}).addTo(map);
+            fogLayer.on('load', function(){
+                mapLayer.setOpacity(1);
+            });
+
 
            // setInterval(refreshFog, 5000);
 
