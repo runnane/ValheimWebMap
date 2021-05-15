@@ -67,7 +67,7 @@
             "76561197968706811,1620562147781.76-5800,dot,Runnane,1108.94,-613.22,silver\n" +
             "76561197968706811,1620562157456.77-1741,dot,Runnane,1136.08,-614.28,silver\n" +
             "76561197968706811,1620643439117.26-8371,dot,Runnane,1215.27,-633.24,SILVER2\n" +
-            "76561197968706811,1620643552166.04-7031,dot,Runnane,1185.17,-635.22,SILVER VEIN";
+            "76561197968706811,v4wytercsercg,dot,Runnane,1185.17,-635.22,SILVER VEIN";
 
         var mapLayer;
         var fogLayer;
@@ -75,9 +75,9 @@
         var players = [];
         var pins = [];
 
-        var hostname = "localhost:3000";
-    //    var ws_override = "http://localhost:3000/" ;
-        var ws_override = "" ;
+        var hostname = "mushroom.runnane.no:3000";
+        var ws_override = "http://mushroom.runnane.no:3000/" ;
+        //var ws_override = "" ;
 
         $(document).ready ( function(){
             map = L.map('map', {
@@ -100,14 +100,16 @@
  */
             map.setView( [0, 0], 0);
 
+            map.on('click', addMarker);
+
             var playerIcon = L.icon({
-                iconUrl: 'playerIcon.png',
+                iconUrl: ws_override + 'playerIcon.png',
                 iconSize:     [31, 31], // size of the icon
                 iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
             //  popupAnchor:  [-3, -76] // point from which the popup should open relative to the iconAnchor
             });
             var dotIcon = L.icon({
-                iconUrl: 'dotIcon.png',
+                iconUrl: ws_override + 'dotIcon.png',
                 iconSize:     [31, 31], // size of the icon
                 iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
                 //  popupAnchor:  [-3, -76] // point from which the popup should open relative to the iconAnchor
@@ -189,11 +191,24 @@
 
                 },
                 rmpin: (lines) => {
+
+
                     console.log("rmpin", lines);
+                    const pin_id = lines[0];
+                    console.log("rmpin", pin_id);
+                    removePin(pin_id);
                 }
             };
 
             let connectionTries = 0;
+
+            var removePin = function(pin_id){
+                if(pins[pin_id] != undefined) {
+                    pins[pin_id].marker.unbindTooltip();
+                    map.removeLayer(pins[pin_id].marker)
+                    delete pins[pin_id];
+                }
+            };
 
             var setupPin = function(pin){
 
@@ -209,13 +224,67 @@
                             // opacity: 0
                         });
 
-                    pins[pin.id].marker.bindPopup("Update name here?<br><button>Update</button>");
-                    pins[pin.id].marker.on('moveend', function(e) {
-                        console.log('marker moveend event', e.target.getLatLng(), pins[pin.id]);
 
+
+
+                    var popup = "";
+                    popup += "<strong>Text</strong>: <input type='text' name='pin_text_" + pin.id + "' value='" + pin.text + "'><br>";
+                    popup += "<strong>Created by</strong>: " + pin.name + " (" + pin.uid + ")<br>";
+                    popup += "<strong>Id</strong>: " + pin.id + "<br>";
+                    popup += "<strong>Pos</strong>: " + pin.x + " , " + pin.z + "<br>";
+                    //popup += "<strong>Pos</strong>: " + pin.marker._latlng.lng + " , " + pin.marker._latlng.lat + "<br>";
+                    popup += "<button onclick=\"javascript:updatePin('" + pin.id + "');\">Update</button>";
+                    popup += "<button onclick=\"javascript:movePin('" + pin.id + "');\">Move</button>";
+                    popup += "<button onclick=\"javascript:deletePin('" + pin.id + "');\">Delete</button>";
+
+                    var newPopup = L.popup().
+                    setContent(popup);
+
+                    pins[pin.id].popup = newPopup;
+
+
+                    pins[pin.id].marker.bindPopup(pins[pin.id].popup);
+                    pins[pin.id].marker.on('moveend', function(e) {
+
+                        var newPos = e.target.getLatLng();
+                        var popup = "";
+                        popup += "<strong>newPos</strong>: " + newPos.lng + " , " + newPos.lat + "<br>";
+                        popup += "<button onclick=\"javascript:movePin('" + pin.id + "','" + newPos.lng + "','" + newPos.lat + "');\">Move pin</button>";
+
+
+                        var popup = L.popup()
+                            .setLatLng(newPos)
+                            .setContent(popup)
+                            .openOn(map);
+
+
+                        console.log('marker moveend event', e.target.getLatLng(), pins[pin.id]);
                     });
                 }else{
+                    console.log("pin had update", pins[pin.id], pin);
+
+                    var popup = "";
+                    popup += "<strong>Text</strong>: <input type='text' name='pin_text_" + pin.id + "' value='" + pin.text + "'><br>";
+                    popup += "<strong>Created by</strong>: " + pin.name + " (" + pin.uid + ")<br>";
+                    popup += "<strong>Id</strong>: " + pin.id + "<br>";
+                    popup += "<strong>Pos</strong>: " + pin.x + " , " + pin.z + "<br>";
+                    //popup += "<strong>Pos</strong>: " + pin.marker._latlng.lng + " , " + pin.marker._latlng.lat + "<br>";
+                    popup += "<button onclick=\"javascript:updatePin('" + pin.id + "');\">Update</button>";
+                    popup += "<button onclick=\"javascript:deletePin('" + pin.id + "');\">Delete</button>";
+
+                    pins[pin.id].popup.setContent(popup);
+
+
                     pins[pin.id].marker.setLatLng(new L.LatLng(pin.z, pin.x ));
+                    pins[pin.id].marker.unbindTooltip();
+                    pins[pin.id].marker.bindTooltip(pin.text,
+                        {
+                            permanent: true,
+                            direction: 'bottom',
+                            className: "my-label",
+                            offset: [0, 0],
+                            // opacity: 0
+                        });
                 }
             };
             const init = () => {
@@ -243,9 +312,12 @@
                 });
             };
 
-            fetch('pins').then(res => res.text()).then(text => {
+
+            fetch(ws_override + 'pins', {mode: 'cors'})
+                .then(res => res.text())
+                .then(text => {
                 const lines = text.split('\n');
-                //const lines = OVERRIDE_PINS.split('\n');
+               // console.log(ws_override + 'pins', lines);
                 lines.forEach(line => {
                     const lineParts = line.split(',');
                     if (lineParts.length > 5) {
@@ -264,6 +336,29 @@
                     }
                 });
             });
+                /*.catch(function() {
+                console.log("error fetching pins, doing fallover");
+                const lines = OVERRIDE_PINS.split('\n');
+                lines.forEach(line => {
+                    const lineParts = line.split(',');
+                    if (lineParts.length > 5) {
+                        const pin = {
+                            id: lineParts[1],
+                            uid: lineParts[0],
+                            type: lineParts[2],
+                            name: lineParts[3],
+                            x: lineParts[4],
+                            z: lineParts[5],
+                            text: lineParts[6],
+                            static: true
+                        };
+                        setupPin(pin);
+
+                    }
+                });
+            });*/
+
+
 
         setInterval(() => {
             // console.log("cleanup()");
@@ -283,9 +378,7 @@
             const now = Date.now();
             Object.keys(players).forEach((key) => {
                 //console.log(key);
-
                 const player = players[key];
-
                 if (now - player.lastUpdate > 5000) {
                     //  console.log(player)
                     console.log("player "+player.name+" logged out ")
@@ -301,6 +394,95 @@
 
             init();
         });
+
+        function addMarker(e){
+
+            console.log("addMarker", e);
+
+            var popup = "";
+            popup += "<strong>Text</strong>: <input type='text' name='pin_text_new' value=''><br>";
+            popup += "<strong>Pos</strong>: " + e.latlng.lng + " , " + e.latlng.lat + "<br>";
+            popup += "<button onclick=\"javascript:addPin('"+e.latlng.lng+"','"+e.latlng.lat+"');\">Create pin</button>";
+
+
+            var popup = L.popup()
+                .setLatLng(e.latlng)
+                .setContent(popup)
+                .openOn(map);
+        }
+
+        const addPin = function (posx, posz){
+
+            console.log("posx", posx);
+            console.log("posz", posz);
+
+            const steamid = "0";
+            const username = "web";
+            const icon = "pin";
+            let field = $("[name='pin_text_new']");
+            let text = field.val().replace(/ /g,"_");
+
+
+            const url = ws_override + 'api/pin/new/?posx='+posx+'&posz='+posz+'&icon='+icon+'&steamid='+steamid+'&username='+username+'&text=' + text;
+            console.log("url", url);
+            fetch(url, {mode: 'cors'})
+                .then(res => res.text())
+                .then(text => {
+                    console.log("fetch", text)
+                    map.closePopup();
+                });
+        }
+
+        const updatePin = function(pin_id){
+            const pin = pins[pin_id];
+
+            console.log("updatePin",pins[pin_id]);
+            console.log("text_file_id", "pin_text_"+pin_id);
+            let field = $("[name='pin_text_"+pin_id+"']");
+            console.log("text", field);
+            let newVal = field.val().replace(/ /g,"_");
+            if(confirm("Are you sure you want to rename '"+pins[pin_id].text+"' to '"+newVal+"'?")){
+                const url = ws_override + 'api/pin/' + pin.id + '?text=' + newVal;
+                console.log("url", url);
+                fetch(url, {mode: 'cors'})
+                    .then(res => res.text())
+                    .then(text => {
+                        console.log("fetch", text)
+                        map.closePopup();
+                    });
+
+            }
+
+        }
+        const movePin = function(pin_id, posx, posz){
+            console.log("movePin",pins[pin_id]);
+            if(confirm("Are you sure you want to move '"+pins[pin_id].text+"' ?")){
+                const url = ws_override + 'api/pin/' + pin_id + '?posx=' + posx + '&posz=' + posz;
+                console.log("url", url);
+                fetch(url, {mode: 'cors'})
+                    .then(res => res.text())
+                    .then(text => {
+                        console.log("fetch", text)
+                        map.closePopup();
+                    });
+
+
+            }
+        };
+
+        const deletePin = function(pin_id){
+            console.log("deletePin",pins[pin_id]);
+            if(confirm("Are you sure you want to delete '"+pins[pin_id].text+"'?")){
+                const url = ws_override + 'api/pin/' + pin_id + '?removePin=1';
+                console.log("url", url);
+                fetch(url, {mode: 'cors'})
+                    .then(res => res.text())
+                    .then(text => {
+                        console.log("fetch", text)
+                        map.closePopup();
+                    });
+            }
+        }
     </script>
 
 <style type="text/css">
