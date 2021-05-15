@@ -352,8 +352,14 @@ namespace WebMap {
                 else
                 {
                     Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() will try to clean url");
-                    var cleanedUrl =
-                        e.Request.RawUrl.Substring(0, e.Request.RawUrl.IndexOf(e.Request.QueryString.ToString()) - 1);
+                    var cleanedUrl = e.Request.RawUrl;
+
+                    var posOfParms = e.Request.RawUrl.IndexOf("?");
+                    if (posOfParms >= 0)
+                    {
+                        cleanedUrl =
+                            e.Request.RawUrl.Substring(0, posOfParms - 1);
+                    }
                     Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() cleanedUrl: {cleanedUrl}");
                     var uuid = cleanedUrl.Substring(9);
 
