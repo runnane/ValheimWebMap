@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>ValheimLeafletMap</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
       integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
@@ -142,19 +142,35 @@
                         if(players[newPlayer.id] == undefined){
                             console.log("adding new player " + newPlayer.name);
                             players[newPlayer.id] = newPlayer;
-                            players[newPlayer.id].marker = L.marker([ newPlayer.z, newPlayer.x ],{icon: playerIcon}).addTo(map);
-                            players[newPlayer.id].marker.bindTooltip(newPlayer.name,
-                                {
-                                    permanent: true,
-                                    direction: 'bottom',
-                                    className: "my-label",
-                                    offset: [0, 0],
+                            if(!newPlayer.hidden){
+                                players[newPlayer.id].marker = L.marker([ newPlayer.z, newPlayer.x ],{icon: playerIcon}).addTo(map);
+                                players[newPlayer.id].marker.bindTooltip(newPlayer.name,
+                                    {
+                                        permanent: true,
+                                        direction: 'bottom',
+                                        className: "my-label",
+                                        offset: [0, 0],
 
-                                });
+                                    });
+                            }
                             players[newPlayer.id].lastUpdate = Date.now();
 
                         }else{
-                            players[newPlayer.id].marker.setLatLng(new L.LatLng(newPlayer.z, newPlayer.x ));
+                            if(!newPlayer.hidden){
+                                if(players[newPlayer.id].marker == undefined){
+                                    players[newPlayer.id].marker = L.marker([ newPlayer.z, newPlayer.x ],{icon: playerIcon}).addTo(map);
+                                    players[newPlayer.id].marker.bindTooltip(newPlayer.name,
+                                        {
+                                            permanent: true,
+                                            direction: 'bottom',
+                                            className: "my-label",
+                                            offset: [0, 0],
+
+                                        });
+                                }
+                                players[newPlayer.id].marker.setLatLng(new L.LatLng(newPlayer.z, newPlayer.x ));
+                            }
+
                             players[newPlayer.id].lastUpdate = Date.now();
                         }
 
@@ -420,7 +436,7 @@
             const username = "web";
             const icon = "pin";
             let field = $("[name='pin_text_new']");
-            let text = field.val().replace(/ /g,"_");
+            let text = field.val(); //.replace(/ /g,"_");
 
 
             const url = ws_override + 'api/pin/new/?posx='+posx+'&posz='+posz+'&icon='+icon+'&steamid='+steamid+'&username='+username+'&text=' + text;
@@ -440,7 +456,7 @@
             console.log("text_file_id", "pin_text_"+pin_id);
             let field = $("[name='pin_text_"+pin_id+"']");
             console.log("text", field);
-            let newVal = field.val().replace(/ /g,"_");
+            let newVal = field.val(); //.replace(/ /g,"_");
             if(confirm("Are you sure you want to rename '"+pins[pin_id].text+"' to '"+newVal+"'?")){
                 const url = ws_override + 'api/pin/' + pin.id + '?text=' + newVal;
                 console.log("url", url);
