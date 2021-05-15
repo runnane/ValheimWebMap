@@ -53,8 +53,10 @@ namespace WebMap {
             httpServer = new HttpServer(WebMapConfig.SERVER_PORT);
             httpServer.AddWebSocketService<WebSocketHandler>("/");
             httpServer.KeepClean = true;
+          
 
             webSocketHandler = httpServer.WebSocketServices["/"];
+          
             Debug.Log($"WebMap: MapDataServer() interval={WebMapConfig.PLAYER_UPDATE_INTERVAL}");
             broadcastTimer = new System.Threading.Timer((e) => {
             var dataString = "";
@@ -158,6 +160,7 @@ namespace WebMap {
 
                 if (requestedFileBytes.Length > 0) {
                     res.Headers.Add(HttpResponseHeader.CacheControl, "public, max-age=604800, immutable");
+                    res.Headers.Add("Access-Control-Allow-Origin: *");
                     res.ContentType = contentTypes[fileExt];
                     res.StatusCode = 200;
                     res.ContentLength64 = requestedFileBytes.Length;
@@ -188,6 +191,7 @@ namespace WebMap {
             switch(rawRequestPath) {
                 case "/config":
                     res.Headers.Add(HttpResponseHeader.CacheControl, "no-cache");
+
                     res.ContentType = "application/json";
                     res.StatusCode = 200;
                     textBytes = Encoding.UTF8.GetBytes(WebMapConfig.makeClientConfigJSON());
@@ -197,6 +201,7 @@ namespace WebMap {
                 case "/map":
                     // Doing things this way to make the full map harder to accidentally see.
                     res.Headers.Add(HttpResponseHeader.CacheControl, "public, max-age=604800, immutable");
+                    res.Headers.Add("Access-Control-Allow-Origin: *");
                     res.ContentType = "application/octet-stream";
                     res.StatusCode = 200;
                     res.ContentLength64 = mapImageData.Length;
@@ -204,6 +209,7 @@ namespace WebMap {
                     return true;
                 case "/fog":
                     res.Headers.Add(HttpResponseHeader.CacheControl, "no-cache");
+                    res.Headers.Add("Access-Control-Allow-Origin: *");
                     res.ContentType = "image/png";
                     res.StatusCode = 200;
                     var fogBytes = fogTexture.EncodeToPNG();
@@ -212,6 +218,7 @@ namespace WebMap {
                     return true;
                 case "/pins":
                     res.Headers.Add(HttpResponseHeader.CacheControl, "no-cache");
+                    res.Headers.Add("Access-Control-Allow-Origin: *");
                     res.ContentType = "text/csv";
                     res.StatusCode = 200;
                     var text = String.Join("\n", pins);
@@ -241,6 +248,7 @@ namespace WebMap {
 
             if (rawRequestPath.StartsWith("/api/pins")){
                 res.Headers.Add(HttpResponseHeader.CacheControl, "no-cache");
+                res.Headers.Add("Access-Control-Allow-Origin: *");
                 res.ContentType = "application/json";
                 res.StatusCode = 200;
 
@@ -293,6 +301,7 @@ namespace WebMap {
 
 
                 res.Headers.Add(HttpResponseHeader.CacheControl, "no-cache");
+                res.Headers.Add("Access-Control-Allow-Origin: *");
                 res.ContentType = "application/json";
 
               
