@@ -232,6 +232,10 @@
 
             var setupPin = function(pin){
 
+                if(!pin.z || !pin.x || !pin.text){
+                    console.log("pin missing data", pin);
+                    return;
+                }
                 if(pins[pin.id] == undefined){
                     pins[pin.id] = pin;
                     pins[pin.id].marker = L.marker([ pin.z, pin.x ], {icon: dotIcon, draggable: true, autoPan: true}).addTo(map);
@@ -254,7 +258,7 @@
                     popup += "<strong>Pos</strong>: " + pin.x + " , " + pin.z + "<br>";
                     //popup += "<strong>Pos</strong>: " + pin.marker._latlng.lng + " , " + pin.marker._latlng.lat + "<br>";
                     popup += "<button onclick=\"javascript:updatePin('" + pin.id + "');\">Update</button>";
-                    popup += "<button onclick=\"javascript:movePin('" + pin.id + "');\">Move</button>";
+                    //popup += "<button onclick=\"javascript:movePin('" + pin.id + "');\">Move</button>";
                     popup += "<button onclick=\"javascript:deletePin('" + pin.id + "');\">Delete</button>";
 
                     var newPopup = L.popup().
@@ -433,15 +437,24 @@
 
         const addPin = function (posx, posz){
 
+            if(!posx || !posz){
+                console.log("aborting, no posx or posz");
+                return;
+            }
             console.log("posx", posx);
             console.log("posz", posz);
 
             const steamid = "0";
             const username = "web";
             const icon = "pin";
+
             let field = $("[name='pin_text_new']");
             let text = field.val(); //.replace(/ /g,"_");
 
+            if(!text){
+                console.log("aborting, no text");
+                return;
+            }
 
             const url = ws_override + 'api/pin/new/?posx='+posx+'&posz='+posz+'&icon='+icon+'&steamid='+steamid+'&username='+username+'&text=' + text;
             console.log("url", url);
@@ -454,6 +467,10 @@
         }
 
         const updatePin = function(pin_id){
+            if(!pin_id){
+                console.log("aborting, pin_id");
+                return;
+            }
             const pin = pins[pin_id];
 
             console.log("updatePin",pins[pin_id]);
@@ -475,6 +492,10 @@
 
         }
         const movePin = function(pin_id, posx, posz){
+            if(!pin_id || posx == undefined || posz == undefined){
+                console.log("aborting, missing parm");
+                return;
+            }
             console.log("movePin",pins[pin_id]);
             if(confirm("Are you sure you want to move '"+pins[pin_id].text+"' ?")){
                 const url = ws_override + 'api/pin/' + pin_id + '?posx=' + posx + '&posz=' + posz;
@@ -491,6 +512,10 @@
         };
 
         const deletePin = function(pin_id){
+            if(!pin_id){
+                console.log("aborting, pin_id");
+                return;
+            }
             console.log("deletePin",pins[pin_id]);
             if(confirm("Are you sure you want to delete '"+pins[pin_id].text+"'?")){
                 const url = ws_override + 'api/pin/' + pin_id + '?removePin=1';
