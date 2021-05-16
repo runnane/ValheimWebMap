@@ -13,14 +13,17 @@
         crossorigin=""></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-mouse-position@1.2.0/src/L.Control.MousePosition.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-hash/0.2.1/leaflet-hash.min.js" integrity="sha512-0A4MbfuZq5Au9EdpI1S5rUTXlibNBi8CuZ/X3ycwXyZiCjNzpiO9YH6EMqPgzZm6vfNCuZStBQHjnO17nIC0IQ==" crossorigin="anonymous"></script>
+
 
     <script type="application/javascript">
- var mapLayer;
+        var mapLayer;
         var fogLayer;
         var map;
         var players = [];
         var pins = [];
 
+        var follow = "";
         var ws_override = "http://mushroom.runnane.no:3000/" ;
 
 
@@ -29,6 +32,7 @@
                 crs: L.CRS.Simple,
                 minZoom: -5
             });
+
             var bounds = [[-12300,-12300], [12300,12300]];
 
 
@@ -48,6 +52,7 @@
 
  */
             map.setView( [0, 0], 0);
+            var hash = new L.Hash(map);
 
             map.on('click', addMarker);
 
@@ -87,9 +92,10 @@
                             newPlayer.hidden = true;
                         }
                         playerData.push(newPlayer);
-                       // console.log("newPlayer", newPlayer);
+
                         if(players[newPlayer.id] == undefined){
                             console.log("adding new player " + newPlayer.name);
+                            $('#overlayLog').html($('#overlayLog').html() + "<br>" + "player "+newPlayer.name+" logged in ");
                             players[newPlayer.id] = newPlayer;
                             if(!newPlayer.hidden){
                                 players[newPlayer.id].marker = L.marker([ newPlayer.z, newPlayer.x ],{icon: playerIcon}).addTo(map);
@@ -99,7 +105,6 @@
                                         direction: 'bottom',
                                         className: "my-label",
                                         offset: [0, 0],
-
                                     });
                             }
                             players[newPlayer.id].lastUpdate = Date.now();
@@ -114,10 +119,15 @@
                                             direction: 'bottom',
                                             className: "my-label",
                                             offset: [0, 0],
-
                                         });
                                 }
+                                players[newPlayer.id].health = parseFloat(playerLines[3]);
+                                players[newPlayer.id].maxHealth= parseFloat(playerLines[4]);
+
+
                                 players[newPlayer.id].marker.setLatLng(new L.LatLng(newPlayer.z, newPlayer.x ));
+                            }else{
+
                             }
 
                             players[newPlayer.id].lastUpdate = Date.now();
@@ -305,7 +315,7 @@
                     const lineParts = line.split(',');
                     if (lineParts.length > 5) {
                         //console.log(line);
-                        //console.log(lineParts);
+                        //  console.log(lineParts);
                         const pin = {
                             id: lineParts[1],
                             uid: lineParts[0],
@@ -323,34 +333,45 @@
             });
 
         setInterval(() => {
-            // console.log("cleanup()");
-            // console.log("players", players);
-
             // Update fog
             if(!!Object.keys(players).length){
                 //   console.log("players online, will update fog");
                 fogLayer.setUrl(ws_override+'fog?' + new Date().getTime());
-            }else{
-                //   console.log("no players online, will not update fog");
             }
-
-
-
-            // clean up disconnected players.
-            const now = Date.now();
-            Object.keys(players).forEach((key) => {
-                //console.log(key);
-                const player = players[key];
-                if (now - player.lastUpdate > 5000) {
-                    //  console.log(player)
-                    console.log("player "+player.name+" logged out ")
-                    map.removeLayer(player.marker)
-                    delete players[key];
-                }
-
-
-            });
         }, 5000);
+
+            setInterval(() => {
+                // clean up disconnected players.
+                let playerHtml = "";
+                const now = Date.now();
+                Object.keys(players).forEach((key) => {
+                    //console.log(key);
+                    const player = players[key];
+                    if (now - player.lastUpdate > 5000) {
+                        //  console.log(player)
+                        console.log("player "+player.name+" logged out ")
+                        $('#overlayLog').html($('#overlayLog').html() + "<br>" + "player "+player.name+" logged out ");
+                        map.removeLayer(player.marker)
+                        delete players[key];
+                    }else{
+                        let health_percent = (player.health*100)/(player.maxHealth);
+                        let color = "red";
+                        if(health_percent > 75){
+                            color = "darkgreen";
+                        }else if(health_percent > 30){
+                            color = "yellow";
+                        }
+                        playerHtml += "<div class='playerLine'>" + player.name + " ("+player.health+"/"+player.maxHealth+") <div class='hpbarOuter'><div class=\"hpbar\" style='background-color: "+color+"; width: "+health_percent+"%;'>&nbsp;</div></div></div>";
+
+
+                    }
+
+
+                });
+
+                $('#overlayPlayers').html(playerHtml);
+
+            }, 1000);
 
 
 
@@ -504,10 +525,52 @@
     .leaflet-tooltip-bottom:before {
         border: none;
     }
+    #overlay {
+        position:absolute;
+        top:0px;
+        right:0px;
+        background-color:white;
+        width:30%;
+        height:20%;
+        z-index: 99999;
+        opacity: 80%;
+    }
+    .playerLine {
+        height: 15px;
+        position: relative;
+
+
+    }
+    .hpbarOuter {
+        height: 8px;
+        display: inline-block;
+        border: 1px black solid;
+        width: 100px;
+        margin-left: 5px;
+        position: absolute;
+        top: 50%;
+        -ms-transform: translateY(-50%);
+        transform: translateY(-50%);
+
+        border: 1px black solid;
+
+        margin-left: 5px;
+    }
+    .hpbar {
+        height: 8px;
+        display: inline-block;
+
+
+    }
 </style>
 </head>
 <body>
 <div id="map"></div>
-
+<div id="overlay">
+    <strong>Players online</strong>
+<div id="overlayPlayers">None</div>
+    <strong>Log</strong>
+    <div id="overlayLog"></div>
+</div>
 </body>
 </html>
