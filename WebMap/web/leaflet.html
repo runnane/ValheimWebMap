@@ -15,68 +15,13 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-mouse-position@1.2.0/src/L.Control.MousePosition.min.js"></script>
 
     <script type="application/javascript">
-
-        var OVERRIDE_PINS = "76561197968706811,1620061787937.65-6647,dot,Runnane,2461.55,-786.66,explore5\n" +
-            "76561197968706811,1620061816742.21-5872,dot,Runnane,2481.72,-1326.24,swampplains\n" +
-            "76561197968706811,1620061836518.95-4694,dot,Runnane,-1168.25,-2998.25,explore2\n" +
-            "76561197968706811,1620061874148.27-6430,dot,Runnane,3705.08,-2128.51,explore4\n" +
-            "76561197968706811,1620061910120.46-8184,dot,Runnane,-374.06,-3964.18,explore3\n" +
-            "76561197968706811,1620061956215.26-3214,dot,Runnane,34.15,-261.10,home\n" +
-            "76561197968706811,1620061975153.58-1102,dot,Runnane,1850.50,-1520.83,docks\n" +
-            "76561197968706811,1620061989541.45-3660,dot,Runnane,2225.21,-1920.32,elder\n" +
-            "76561197968706811,1620064403226.9-6726,dot,Runnane,2946.34,-579.94,CRYPTLOCKED\n" +
-            "76561197968706811,1620065196918.78-9001,dot,Runnane,2791.78,-280.93,shelter\n" +
-            "76561197968706811,1620065834652.92-4270,dot,Runnane,2167.80,68.64,Crypt7-CLR\n" +
-            "76561197968706811,1620065872840.79-6269,dot,Runnane,2127.69,139.77,Crypt8-CLR\n" +
-            "76561197968706811,1620066714928.19-5377,dot,Runnane,3537.58,-1175.24,explore\n" +
-            "76561197969296668,1620072556642.13-1496,dot,Jacobim,2521.51,63.60,Explore 6\n" +
-            "76561197969296668,1620076171070.24-6555,dot,Jacobim,2240.97,134.23,Crypt9-CLR\n" +
-            "76561197969296668,1620133036074.11-5931,dot,Jacobim,2184.00,179.27,crypt unlocked\n" +
-            "76561197968706811,1620153575615.46-1144,dot,Runnane,4949.77,-3328.64,boat is here\n" +
-            "76561197968706811,1620156072905.28-1130,dot,Runnane,4332.53,-3197.07,bonemass\n" +
-            "76561197968706811,1620158330165.17-5589,dot,Runnane,4328.58,-3207.87,EXPLORE7 bonemass\n" +
-            "76561197969296668,1620303977388.6-4794,dot,Jacobim,2540.42,-615.82,copper\n" +
-            "76561197969296668,1620304667880.74-7937,dot,Jacobim,2403.11,-564.73,copper\n" +
-            "76561197969296668,1620306448681.82-3660,dot,Jacobim,2574.43,-676.58,copper\n" +
-            "76561197969296668,1620306613907.36-5708,dot,Jacobim,2692.76,-452.89,copper\n" +
-            "76561197969296668,1620321503929.16-4802,dot,Jacobim,2244.09,-1580.92,copper\n" +
-            "76561197969296668,1620321695223.97-5675,dot,Jacobim,1784.21,-1670.99,burial chambers\n" +
-            "76561197969296668,1620321709189.46-5331,dot,Jacobim,1764.95,-1679.01,copper\n" +
-            "76561197969296668,1620321769387.18-8862,dot,Jacobim,1836.50,-1738.13,copper\n" +
-            "76561197969296668,1620322007011.11-9598,dot,Jacobim,2065.49,-1929.47,copper\n" +
-            "76561197969296668,1620322066641.76-1933,dot,Jacobim,2034.98,-1992.61,burial chambers\n" +
-            "76561197969296668,1620322123037.71-6958,dot,Jacobim,2104.29,-1992.40,burial chambers\n" +
-            "76561197969296668,1620322194992.67-1653,dot,Jacobim,2110.60,-1924.67,burial chambers\n" +
-            "76561197969296668,1620322215950.38-7158,dot,Jacobim,2132.38,-1926.36,copper\n" +
-            "76561197969296668,1620322244986.73-8638,dot,Jacobim,2152.84,-1911.90,copper\n" +
-            "76561197969296668,1620331029912.23-1730,dot,Jacobim,2191.09,-2010.71,copper\n" +
-            "76561197968706811,1620383205419.97-2206,dot,Runnane,-150.07,-48.34,eikthyr\n" +
-            "76561197969296668,1620392792637.25-1874,dot,Jacobim,1870.91,-2266.93,SILVER VEIN\n" +
-            "76561197968706811,1620404330330.35-9775,dot,Runnane,1867.43,-2307.50,SILVER VEIN\n" +
-            "76561197968706811,1620404727731.66-7107,dot,Runnane,1887.46,-2326.82,SILVER VEIN\n" +
-            "76561197969296668,1620415877069.98-1354,dot,Jacobim,1818.85,-2329.41,SILVER VEIN\n" +
-            "76561197968706811,1620418703353.85-5234,dot,Runnane,2328.02,-2087.64,silverdock\n" +
-            "76561197969296668,1620504716302.33-6865,dot,Jacobim,1776.88,-2371.76,SILVER VEIN\n" +
-            "76561197968706811,1620506450267.72-8793,dot,Runnane,1699.54,-2405.22,SILVER VEIN\n" +
-            "76561197968706811,1620507685390.68-8636,dot,Runnane,3926.33,-1036.87,copper\n" +
-            "76561197968706811,1620507707927.11-7745,dot,Runnane,3969.75,-1001.72,copper\n" +
-            "76561197968706811,1620507782738.42-7303,dot,Runnane,3944.48,-894.72,copper\n" +
-            "76561197968706811,1620507861796.8-2975,dot,Runnane,3798.53,-789.76,copper\n" +
-            "76561197968706811,1620507939164.25-3985,dot,Runnane,3590.93,-915.69,copper\n" +
-            "76561197968706811,1620558411936.52-3137,dot,Runnane,1398.52,-824.31,EXPLORE8\n" +
-            "76561197968706811,1620562147781.76-5800,dot,Runnane,1108.94,-613.22,silver\n" +
-            "76561197968706811,1620562157456.77-1741,dot,Runnane,1136.08,-614.28,silver\n" +
-            "76561197968706811,1620643439117.26-8371,dot,Runnane,1215.27,-633.24,SILVER2\n" +
-            "76561197968706811,v4wytercsercg,dot,Runnane,1185.17,-635.22,SILVER VEIN";
-
-        var mapLayer;
+ var mapLayer;
         var fogLayer;
         var map;
         var players = [];
         var pins = [];
 
-        var hostname = "";
-        var ws_override = "/" ;
+        var ws_override = "http://mushroom.runnane.no:3000/" ;
 
 
         $(document).ready ( function(){
@@ -135,9 +80,9 @@
 
                         if (playerLines[2] !== 'hidden') {
                             const xyz = playerLines[2].split(',').map(parseFloat);
-                            newPlayer.x = xyz[0];
-                            newPlayer.y = xyz[1];
-                            newPlayer.z = xyz[2];
+                            newPlayer.x = parseFloat(xyz[0]);
+                            newPlayer.y = parseFloat(xyz[1]);
+                            newPlayer.z = parseFloat(xyz[2]);
                         } else {
                             newPlayer.hidden = true;
                         }
@@ -200,8 +145,8 @@
                         uid: lines[0],  // steam id
                         type: lines[2],
                         name: lines[3],
-                        x: xz[0],
-                        z: xz[1],
+                        x: parseFloat(xz[0]),
+                        z: parseFloat(xz[1]),
                         text: lines[5]
                     };
 
@@ -232,10 +177,18 @@
 
             var setupPin = function(pin){
 
-                if(!pin.z || !pin.x || !pin.text){
-                    console.log("pin missing data", pin);
+
+                if(isNaN(pin.x) || isNaN(pin.z)){
+                    console.log("pin missing coord", pin);
                     return;
                 }
+                if(pin.text == undefined || !pin.text){
+                    console.log("pin missing text", pin);
+                    return;
+                }
+               // console.log("setupPin()", pin);
+
+
                 if(pins[pin.id] == undefined){
                     pins[pin.id] = pin;
                     pins[pin.id].marker = L.marker([ pin.z, pin.x ], {icon: dotIcon, draggable: true, autoPan: true}).addTo(map);
@@ -269,8 +222,10 @@
 
                     pins[pin.id].marker.bindPopup(pins[pin.id].popup);
                     pins[pin.id].marker.on('moveend', function(e) {
-
                         var newPos = e.target.getLatLng();
+                        movePin(pin.id,newPos.lng ,newPos.lat);
+
+                        /*
                         var popup = "";
                         popup += "<strong>newPos</strong>: " + newPos.lng + " , " + newPos.lat + "<br>";
                         popup += "<button onclick=\"javascript:movePin('" + pin.id + "','" + newPos.lng + "','" + newPos.lat + "');\">Move pin</button>";
@@ -280,7 +235,7 @@
                             .setLatLng(newPos)
                             .setContent(popup)
                             .openOn(map);
-
+                        */
 
                         console.log('marker moveend event', e.target.getLatLng(), pins[pin.id]);
                     });
@@ -312,7 +267,11 @@
                 }
             };
             const init = () => {
-                const ws = new WebSocket("ws://"+hostname+"/");
+                let websocketUrl = location.href.split('?')[0].replace(/^http/, 'ws');
+                if(ws_override){
+                    websocketUrl = ws_override.split('?')[0].replace(/^http/, 'ws');
+                }
+                const ws = new WebSocket(websocketUrl);
                 ws.addEventListener('message', (e) => {
                     const message = e.data.trim();
                     const lines = message.split('\n');
@@ -345,13 +304,15 @@
                 lines.forEach(line => {
                     const lineParts = line.split(',');
                     if (lineParts.length > 5) {
+                        //console.log(line);
+                        //console.log(lineParts);
                         const pin = {
                             id: lineParts[1],
                             uid: lineParts[0],
                             type: lineParts[2],
                             name: lineParts[3],
-                            x: lineParts[4],
-                            z: lineParts[5],
+                            x: parseFloat(lineParts[4]),
+                            z: parseFloat(lineParts[5]),
                             text: lineParts[6],
                             static: true
                         };
@@ -360,29 +321,6 @@
                     }
                 });
             });
-                /*.catch(function() {
-                console.log("error fetching pins, doing fallover");
-                const lines = OVERRIDE_PINS.split('\n');
-                lines.forEach(line => {
-                    const lineParts = line.split(',');
-                    if (lineParts.length > 5) {
-                        const pin = {
-                            id: lineParts[1],
-                            uid: lineParts[0],
-                            type: lineParts[2],
-                            name: lineParts[3],
-                            x: lineParts[4],
-                            z: lineParts[5],
-                            text: lineParts[6],
-                            static: true
-                        };
-                        setupPin(pin);
-
-                    }
-                });
-            });*/
-
-
 
         setInterval(() => {
             // console.log("cleanup()");
