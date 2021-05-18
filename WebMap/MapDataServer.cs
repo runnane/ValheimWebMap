@@ -191,7 +191,7 @@ namespace WebMap {
             switch(rawRequestPath) {
                 case "/config":
                     res.Headers.Add(HttpResponseHeader.CacheControl, "no-cache");
-
+                    res.Headers.Add("Access-Control-Allow-Origin: *");
                     res.ContentType = "application/json";
                     res.StatusCode = 200;
                     textBytes = Encoding.UTF8.GetBytes(WebMapConfig.makeClientConfigJSON());
@@ -360,6 +360,7 @@ namespace WebMap {
                         cleanedUrl =
                             e.Request.RawUrl.Substring(0, posOfParms - 1);
                     }
+
                     Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() cleanedUrl: {cleanedUrl}");
                     var uuid = cleanedUrl.Substring(9);
 
@@ -393,7 +394,7 @@ namespace WebMap {
                         Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() edit pin");
                         if (e.Request.QueryString["icon"] != null)
                         {
-                            pin[3] = e.Request.QueryString["icon"];
+                            pin[2] = e.Request.QueryString["icon"];
                         }
 
                         if (e.Request.QueryString["posx"] != null)
@@ -415,7 +416,7 @@ namespace WebMap {
 
                         pins[idx] = $"{pin[0]},{pin[1]},{pin[2]},{pin[3]},{pin[4]},{pin[5]},{pin[6]}";
                         res.StatusCode = 200;
-                        textBytes = Encoding.UTF8.GetBytes("{ \"result\" : \"ok - updated\" }");
+                        textBytes = Encoding.UTF8.GetBytes("{ \"result\" : \"ok - updated to "+ pins[idx] + "\" }");
                         UpdatePin(idx);
                     }
 

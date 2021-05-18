@@ -96,7 +96,6 @@ namespace WebMap {
                 mapDataServer.NeedSave = false;
             }
         }
-        
 
 
         public void UpdateFogTexture() {
