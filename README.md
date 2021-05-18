@@ -1,3 +1,18 @@
+#Fork notes
+
+Fork of Valheim WebMap with the following changes:
+* leaflet used for web w/ some plugins
+* removed nodejs usage
+* pin editing from web (no auth, use acl on web!)
+* custom icons
+
+## TODO
+* follow
+* ping
+* more server evens
+
+Original README.md below:
+
 # Valheim WebMap
 
 This server side mod creates a web based map that shows live players and allows shared exploration. After port forwarding the correct port, you can share `http://your_ip:port` to anyone else and they can see the map too. **Clients do not need to have any mods installed!**
