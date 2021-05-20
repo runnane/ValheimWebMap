@@ -1,5 +1,6 @@
 
-var ws_override = "http://mushroom.runnane.no:3000/" ;
+var ws_override = "" ;
+var debug_add_player = "";
 
 var follow = "";
 var mapLayer;
@@ -9,7 +10,7 @@ var players = {};
 var pins = {};
 var server_config = {};
 const icons = {};
-var firstRun=true;
+var statusObj= {};
 const iconlist = ["dot", "dotx", "ore", "orex", "crypt","cryptx", "portal", "portalx", "start", "player"];
 
 iconlist.forEach(function(iconname){
@@ -31,10 +32,27 @@ const parseVector3 = str => {
 };
 
 $(document).ready ( function(){
+
+    $('#sendChat').click(function(){
+
+       const textToSend = $('#chatbox').val();
+       if(textToSend){
+           //addLog("Sent chat: "+ textToSend);
+           $('#chatbox').val("");
+           const url = ws_override + 'api/msg/?msg='+textToSend;
+           fetch(url, {mode: 'cors'})
+               .then(res => res.text())
+               .then(text => {
+                   map.closePopup();
+               });
+       }
+    });
     map = L.map('map', {
         crs: L.CRS.Simple,
         minZoom: -5
     });
+    statusObj.firstPlayer = true;
+    statusObj.firstPin = true;
 
     var bounds = [[-12300,-12300], [12300,12300]];
 
@@ -53,6 +71,16 @@ $(document).ready ( function(){
 
 
     const actions = {
+        say: (lines, message) => {
+            const messageParts = message.split('\n');
+            addLog("<strong>" + messageParts[2] + ": " + messageParts[3] + "</strong>")
+            console.log(messageParts);
+        },
+        webchat: (lines, message) => {
+            const messageParts = message.split('\n');
+            addLog("<strong>" + messageParts[0] + ": " + messageParts[1] + "</strong>")
+            console.log(messageParts);
+        },
         players: (lines, message) => {
             const msg = message.replace(/^players\n/, '');
             const playerSections = msg.split('\n\n');
@@ -77,9 +105,11 @@ $(document).ready ( function(){
                 playerData.push(newPlayer);
 
                 if(players[newPlayer.id] == undefined){
-                    if(!firstRun){
-                        addLog("Player " + newPlayer.name+" first seen");
-                       // $('#overlayLog').html($('#overlayLog').html() + "<br>" + );
+                    if(!statusObj.firstPlayer){
+                        addLog("Player " + newPlayer.name+" logged in");
+                    }else{
+                        addLog("Player " + newPlayer.name+" is online");
+
                     }
                     players[newPlayer.id] = newPlayer;
                     if(!newPlayer.hidden){
@@ -91,6 +121,7 @@ $(document).ready ( function(){
                                 className: "my-label",
                                 offset: [0, 0],
                             });
+
                     }
                     players[newPlayer.id].lastUpdate = Date.now();
 
@@ -111,15 +142,20 @@ $(document).ready ( function(){
 
 
                         players[newPlayer.id].marker.setLatLng(new L.LatLng(newPlayer.z, newPlayer.x ));
-                    }else{
+                        if(follow == newPlayer.name){
+                            map.panTo([ newPlayer.z, newPlayer.x ]);
 
+                        }
+
+                    }else{
+                        // Player is hidden
                     }
 
                     players[newPlayer.id].lastUpdate = Date.now();
                 }
 
             });
-
+            statusObj.firstPlayer=false;
 
         },
         ping: (lines) => {
@@ -148,6 +184,7 @@ $(document).ready ( function(){
             };
 
             setupPin(pin);
+            statusObj.firstPin=false;
 
         },
         rmpin: (lines) => {
@@ -165,6 +202,8 @@ $(document).ready ( function(){
             delete pins[pin_id];
         }
     };
+
+
 
     var setupPin = function(pin){
         if(isNaN(pin.x) || isNaN(pin.z)){
@@ -218,11 +257,14 @@ $(document).ready ( function(){
                 movePin(pin.id,newPos.lng ,newPos.lat);
             });
 
-            if(!firstRun){
+            if(!statusObj.firstPin){
                 addLog("Got new pin from server: " + pin.text);
             }
         }else{
-            addLog("Pin was updated from server: " + pin.text);
+
+            if(!statusObj.firstPin){
+                addLog("Pin was updated from server: " + pin.text);
+            }
             // Update to existing pin
             var popup = "";
             popup += "<strong>Text</strong>: <input type='text' name='pin_text_" + pin.id + "' value='" + pin.text + "'><br>";
@@ -258,7 +300,9 @@ $(document).ready ( function(){
     };
 
     const init = () => {
-        let websocketUrl = location.href.split('?')[0].replace(/^http/, 'ws');
+        let hostobj = new URL(location.href);
+
+        let websocketUrl = "ws://"+hostobj;
         if(ws_override){
             websocketUrl = ws_override.split('?')[0].replace(/^http/, 'ws');
         }
@@ -293,7 +337,7 @@ $(document).ready ( function(){
             server_config = JSON.parse(text);
             const start_pos = parseVector3(server_config.world_start_pos);
             L.marker([ start_pos.z, start_pos.x ], {icon: icons['start'], draggable: false, autoPan: true}).addTo(map);
-            addLog("Server config loaded");
+            addLog("Server config downloaded");
 
         });
 
@@ -336,6 +380,9 @@ $(document).ready ( function(){
             const player = players[key];
             if (now - player.lastUpdate > 5000) {
                 addLog("player "+player.name+" logged out ");
+                if(follow == player.name){
+                    follow = "";
+                }
                 map.removeLayer(player.marker)
                 delete players[key];
             }
@@ -353,7 +400,13 @@ $(document).ready ( function(){
                 }else if(health_percent > 30){
                     color = "yellow";
                 }
-                playerHtml += "<div class='playerLine'>" + player.name + " ("+player.health+"/"+player.maxHealth+") <div class='hpbarOuter'><div class=\"hpbar\" style='background-color: "+color+"; width: "+health_percent+"%;'>&nbsp;</div></div></div>";
+                var followIcon = "";
+                if(follow == player.name){
+                    followIcon = "<a href=\"javascript:unfollowPlayer();\"><i class=\"ri-flag-fill ri-lg\"></i></a>";
+                }else{
+                    followIcon = "<a href=\"javascript:followPlayer('"+player.name+"');\"><i class=\"ri-flag-line ri-lg\"></i></a>";
+                }
+                playerHtml += "<div class='playerLine'>" + followIcon + " " + player.name + " ("+player.health+"/"+player.maxHealth+") <div class='hpbarOuter'><div class=\"hpbar\" style='background-color: "+color+"; width: "+health_percent+"%;'>&nbsp;</div></div></div>";
 
             });
         }else{
@@ -479,4 +532,12 @@ const deletePin = function(pin_id){
 const addLog = function(text){
     $('#overlayLog').html(new Date().toLocaleTimeString() + ": " + text + "<br>" + $('#overlayLog').html());
    // $('#overlayLog').html("player " + player.name + " logged out <br>" + $('#overlayLog').html());
+}
+
+const unfollowPlayer = function(){
+    follow = "";
+}
+
+const followPlayer = function(playername){
+    follow = playername;
 }

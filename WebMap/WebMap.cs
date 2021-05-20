@@ -337,9 +337,6 @@ namespace WebMap {
             }
         }
 
-        private static readonly int sayMethodHash = "Say".GetStableHashCode();
-        private static readonly int chatMessageMethodHash = "ChatMessage".GetStableHashCode();
-
         [HarmonyPatch(typeof (ZRoutedRpc), "HandleRoutedRPC")]
         private class ZRoutedRpcPatch {
             static void Prefix(RoutedRPCData data) {
@@ -349,7 +346,7 @@ namespace WebMap {
                     steamid = peer.m_rpc.GetSocket().GetHostName();
                 } catch {}
 
-                if (data?.m_methodHash == sayMethodHash) {
+                if (data?.m_methodHash == "Say".GetStableHashCode()) {
                     try {
                         var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
                         var pos = zdoData.GetPosition();
@@ -358,9 +355,6 @@ namespace WebMap {
                         string userName = package.ReadString();
                         string message = package.ReadString();
                         message = (message == null ? "" : message).Trim();
-
-                        //Debug.Log("WebMap.cs: SayMethod: " + pos + " | " + messageType + " | " + userName + " | " + message);
-
 
                         if (message.StartsWith("/pin")) {
                             var messageParts = message.Split(' ');
@@ -379,8 +373,6 @@ namespace WebMap {
                             }
                             var safePinsText = Regex.Replace(pinText, @"[^a-zA-Z0-9 ]", "");
                             var uuId = Guid.NewGuid();
-                            //var timestamp = DateTime.Now - unixEpoch;
-                            // var pinId = $"{timestamp.TotalMilliseconds}-{UnityEngine.Random.Range(1000, 9999)}";
                             var pinId = uuId.ToString();
                             mapDataServer.AddPin(steamid, pinId, pinType, userName, pos, safePinsText);
 
@@ -414,9 +406,13 @@ namespace WebMap {
                                 SavePins();
                             }
                         }
-                        //Debug.Log("SAY!!! " + messageType + " | " + userName + " | " + message);
+                        else if(!message.StartsWith("/"))
+                        {
+                            mapDataServer.Broadcast($"say\n{messageType}\n{userName}\n{message}");
+                            Debug.Log($"say\n{messageType}\n{userName}\n{message}");
+                        }
                     } catch {}
-                } else if (data?.m_methodHash == chatMessageMethodHash) {
+                } else if (data?.m_methodHash == "ChatMessage".GetStableHashCode()) {
                     try {
                         ZPackage package = new ZPackage(data.m_parameters.GetArray());
                         Vector3 pos = package.ReadVector3();
@@ -428,8 +424,18 @@ namespace WebMap {
                         if (messageType == (int)Talker.Type.Ping) {
                             mapDataServer.BroadcastPing(data.m_senderPeerID, userName, pos);
                         }
-                        Debug.Log("WebMap.cs: CHAT!!! " + pos + " | " + messageType + " | " + userName + " | " + message);
+                        else
+                        {
+                            mapDataServer.Broadcast($"chat\n{messageType}\n{userName}\n{pos}\n{message}");
+                            Debug.Log($"chat\n{messageType}\n{userName}\n{pos}\n{message}");
+                        }
+
                     } catch {}
+                }
+                else if(data?.m_methodHash == "OnDeath".GetStableHashCode())
+                {
+                    // test
+                    mapDataServer.Broadcast($"ondeath\n{peer.m_playerName}");
                 }
             }
         }

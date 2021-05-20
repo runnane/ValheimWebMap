@@ -53,7 +53,6 @@ namespace WebMap {
             httpServer = new HttpServer(WebMapConfig.SERVER_PORT);
             httpServer.AddWebSocketService<WebSocketHandler>("/");
             httpServer.KeepClean = true;
-          
 
             webSocketHandler = httpServer.WebSocketServices["/"];
           
@@ -67,9 +66,7 @@ namespace WebMap {
                 {
                     zdoData = ZDOMan.instance.GetZDO(player.m_characterID);
                 }
-                catch
-                {
-                }
+                catch { }
 
                 if (zdoData != null)
                 {
@@ -121,6 +118,15 @@ namespace WebMap {
             {
                 ProcessSpecialAPIRoutes(e);
             };
+        }
+
+        public void SendGlobalMessage(string text)
+        {
+            ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, "ShowMessage", new object[]
+            {
+                2,
+                "Webchat: " + text
+            });
         }
 
         public void Stop() {
@@ -233,8 +239,8 @@ namespace WebMap {
         private bool ProcessSpecialAPIRoutes(HttpRequestEventArgs e)
         {
            // Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() Url: {e.Request.Url}"); 
-            Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() RawUrl: {e.Request.RawUrl}");
-            Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() QueryString: {e.Request.QueryString}");
+            //Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() RawUrl: {e.Request.RawUrl}");
+            //Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() QueryString: {e.Request.QueryString}");
             
 
             var req = e.Request;
@@ -252,11 +258,6 @@ namespace WebMap {
                 res.ContentType = "application/json";
                 res.StatusCode = 200;
 
-                /*
-                 steamid, id, icon, name, x, y, text
-                76561197968706811,1620727876497.06 - 2741,dot,Modder,68.42,-4.60,123
-                76561197968706811,1620727887643.06 - 8869,dot,Modder,64.66,-4.31,321
-                */
                 var sb = new StringBuilder();
                 sb.AppendLine("{ \"pins\" : [");
                 string delimiter = "";
@@ -291,6 +292,7 @@ namespace WebMap {
                 if (e.Request.QueryString.ToString().Length == 0)
                 {
                     Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() INVALID PAYLOAD");
+
                     res.StatusCode = 500;
                     textBytes = Encoding.UTF8.GetBytes("{ \"result\" : \"invalid payload (no parms)\" }");
                     res.ContentLength64 = textBytes.Length;
@@ -427,6 +429,27 @@ namespace WebMap {
                     return true;
 
                 }
+            }else if(rawRequestPath.StartsWith("/api/msg/"))
+            {
+                if (e.Request.QueryString["msg"] != null)
+                {
+                    var messageToSend = e.Request.QueryString["msg"];
+                    Debug.Log("MapDataServer.cs: Will send SendGlobalMessage(): " + messageToSend);
+
+                    Broadcast($"webchat\n{messageToSend}");
+                    
+                    
+                    SendGlobalMessage(messageToSend);
+                    SendHttpResponse(ref res,
+                        "{ \"result\" : \"ok: " + messageToSend + "\" }",
+                        200,
+                        true,
+                        "application/json");
+                
+                  
+                    return true;
+                }
+                  
             }
 
             res.Headers.Add(HttpResponseHeader.CacheControl, "no-cache");
@@ -436,6 +459,22 @@ namespace WebMap {
             res.ContentLength64 = textBytes.Length;
             res.Close(textBytes, true);
             return true;
+
+        }
+
+        public void SendHttpResponse(ref HttpListenerResponse res, string content, int statusCode = 200 , bool noCache=true, string contentType= "application/json")
+        {
+            if (noCache)
+            {
+                res.Headers.Add(HttpResponseHeader.CacheControl, "no-cache");
+            }
+
+            res.Headers.Add("Access-Control-Allow-Origin: *");
+            res.ContentType = contentType;
+            res.StatusCode = statusCode;
+            var textBytes = Encoding.UTF8.GetBytes(content);
+            res.ContentLength64 = textBytes.Length;
+            res.Close(textBytes, true);
 
         }
 
@@ -451,6 +490,10 @@ namespace WebMap {
 
         public void BroadcastPing(long id, string name, Vector3 position) {
             webSocketHandler.Sessions.Broadcast($"ping\n{str(id)}\n{name}\n{str(position.x)},{str(position.z)}");
+        }
+        public void Broadcast(string text)
+        {
+            webSocketHandler.Sessions.Broadcast(text);
         }
 
         public void AddPin(string id, string pinId, string type, string name, Vector3 position, string pinText) {
