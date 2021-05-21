@@ -18,7 +18,7 @@ namespace WebMap {
         public static int MAX_PINS_PER_USER = 50;
 
         public static int SERVER_PORT = 3000;
-        public static double PLAYER_UPDATE_INTERVAL = 0.5;
+        public static float PLAYER_UPDATE_INTERVAL = 0.5f;
         public static bool CACHE_SERVER_FILES = false;
 
         public static string WORLD_NAME = "";
@@ -91,7 +91,7 @@ namespace WebMap {
             }
 
             try {
-                PLAYER_UPDATE_INTERVAL = Convert.ToDouble(configJson.GetValueOrDefault("player_update_interval", 0.5));
+                PLAYER_UPDATE_INTERVAL = (float)Convert.ToDouble(configJson.GetValueOrDefault("player_update_interval", 0.5));
             } catch {
                 System.Console.WriteLine("~~~ WebMap: FAILED TO PARSE player_update_interval VALUE IN CONFIG FILE AT: " + configFile + " . INVALID TYPE?");
             }

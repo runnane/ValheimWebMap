@@ -32,7 +32,7 @@ namespace WebMap {
         private HttpServer httpServer;
         private string publicRoot;
         private Dictionary<string, byte[]> fileCache;
-        private System.Threading.Timer broadcastTimer;
+        //private System.Threading.Timer broadcastTimer;
         private WebSocketServiceHost webSocketHandler;
 
         public byte[] mapImageData;
@@ -57,48 +57,52 @@ namespace WebMap {
             webSocketHandler = httpServer.WebSocketServices["/"];
           
             Debug.Log($"WebMap: MapDataServer() interval={WebMapConfig.PLAYER_UPDATE_INTERVAL}");
-            broadcastTimer = new System.Threading.Timer((e) => {
-            var dataString = "";
-            players.ForEach(player =>
-            {
-                ZDO zdoData = null;
-                try
+            //broadcastTimer = new System.Threading.Timer((e) => {
+                /*
+                var dataString = "";
+                players.ForEach(player =>
                 {
-                    zdoData = ZDOMan.instance.GetZDO(player.m_characterID);
-                }
-                catch { }
-
-                if (zdoData != null)
-                {
-                    var pos = zdoData.GetPosition();
-                    var maxHealth = zdoData.GetFloat("max_health", 25f);
-                    var health = zdoData.GetFloat("health", maxHealth);
-                    maxHealth = Mathf.Max(maxHealth, health);
-
-                    var maxStamina = zdoData.GetFloat("max_stamina", 100f);
-                    var stamina = zdoData.GetFloat("stamina", maxStamina);
-                  //  maxStamina = Mathf.Max(maxStamina, stamina);
-
-                    if (player.m_publicRefPos)
+                    ZDO zdoData = null;
+                    try
                     {
-                        dataString +=
-                            $"{player.m_uid}\n{player.m_playerName}\n{str(pos.x)},{str(pos.y)},{str(pos.z)}\n{str(health)}\n{str(maxHealth)}\n{str(stamina)}\n{str(maxStamina)}\n\n";
+                        zdoData = ZDOMan.instance.GetZDO(player.m_characterID);
+                    }
+                    catch { }
+
+                    if (zdoData != null)
+                    {
+                        var pos = zdoData.GetPosition();
+                        var maxHealth = zdoData.GetFloat("max_health", 25f);
+                        var health = zdoData.GetFloat("health", maxHealth);
+                        maxHealth = Mathf.Max(maxHealth, health);
+
+                        var maxStamina = zdoData.GetFloat("max_stamina", 100f);
+                        var stamina = zdoData.GetFloat("stamina", maxStamina);
+                      //  maxStamina = Mathf.Max(maxStamina, stamina);
+
+                        if (player.m_publicRefPos)
+                        {
+                            dataString +=
+                                $"{player.m_uid}\n{player.m_playerName}\n{str(pos.x)},{str(pos.y)},{str(pos.z)}\n{str(health)}\n{str(maxHealth)}\n{str(stamina)}\n{str(maxStamina)}\n\n";
+                        }
+                        else
+                        {
+                            dataString += $"{player.m_uid}\n{player.m_playerName}\nhidden\n\n";
+                        }
+                        //Debug.Log("WebMap: Broadcasting");
                     }
                     else
                     {
-                        dataString += $"{player.m_uid}\n{player.m_playerName}\nhidden\n\n";
+                        // Debug.Log("WebMap: Will not broadcast") ;
                     }
-                    //Debug.Log("WebMap: Broadcasting");
-                }
-                else
-                {
-                    // Debug.Log("WebMap: Will not broadcast") ;
-                }
-            });
+                });
                 if (dataString.Length > 0) {
                     webSocketHandler.Sessions.Broadcast("players\n" + dataString.Trim());
                 }
-            }, null, TimeSpan.Zero, TimeSpan.FromSeconds(WebMapConfig.PLAYER_UPDATE_INTERVAL));
+                webSocketHandler.Sessions.Broadcast("players\n" + dataString.Trim());
+
+                */
+            //}, null, TimeSpan.Zero, TimeSpan.FromSeconds(WebMapConfig.PLAYER_UPDATE_INTERVAL));
 
             publicRoot = Path.Combine(System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "web");
 
@@ -135,7 +139,7 @@ namespace WebMap {
         }
 
         public void Stop() {
-            broadcastTimer.Dispose();
+            //broadcastTimer.Dispose();
             httpServer.Stop();
         }
 

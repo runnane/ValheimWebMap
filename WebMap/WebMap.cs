@@ -7,6 +7,8 @@ using System.Reflection;
 using BepInEx;
 using UnityEngine;
 using HarmonyLib;
+using static WebMap.WebMapConfig;
+
 using static ZRoutedRpc;
 
 namespace WebMap {
@@ -42,6 +44,7 @@ namespace WebMap {
 
             mapDataServer = new MapDataServer();
             mapDataServer.ListenAsync();
+
 
             var mapImagePath = Path.Combine(worldDataPath, "map");
             try {
@@ -79,6 +82,8 @@ namespace WebMap {
 
             InvokeRepeating("SavePinsIfNeeded", WebMapConfig.UPDATE_FOG_TEXTURE_INTERVAL, WebMapConfig.UPDATE_FOG_TEXTURE_INTERVAL);
 
+            InvokeRepeating("BroadcastWebsocket", WebMapConfig.PLAYER_UPDATE_INTERVAL, WebMapConfig.PLAYER_UPDATE_INTERVAL);
+
             var mapPinsFile = Path.Combine(worldDataPath, "pins.csv");
             try {
                 var pinsLines = File.ReadAllLines(mapPinsFile);
@@ -86,6 +91,56 @@ namespace WebMap {
             } catch (Exception e) {
                 Debug.Log("WebMap: Failed to read pins.csv from disk. " + e.Message);
             }
+        }
+
+        public void BroadcastWebsocket()
+        {
+          //  Debug.Log("WebMap: BroadcastWebsocket() ");
+
+            var dataString = "";
+            mapDataServer.players.ForEach(player =>
+            {
+                ZDO zdoData = null;
+                try
+                {
+                    zdoData = ZDOMan.instance.GetZDO(player.m_characterID);
+                }
+                catch { }
+
+                if (zdoData != null)
+                {
+                    var pos = zdoData.GetPosition();
+                    var maxHealth = zdoData.GetFloat("max_health", 25f);
+                    var health = zdoData.GetFloat("health", maxHealth);
+                    maxHealth = Mathf.Max(maxHealth, health);
+
+                    var maxStamina = zdoData.GetFloat("max_stamina", 100f);
+                    var stamina = zdoData.GetFloat("stamina", maxStamina);
+                    //  maxStamina = Mathf.Max(maxStamina, stamina);
+
+                    if (player.m_publicRefPos)
+                    {
+                        dataString +=
+                            $"{player.m_uid}\n{player.m_playerName}\n{str(pos.x)},{str(pos.y)},{str(pos.z)}\n{str(health)}\n{str(maxHealth)}\n{str(stamina)}\n{str(maxStamina)}\n\n";
+                    }
+                    else
+                    {
+                        dataString += $"{player.m_uid}\n{player.m_playerName}\nhidden\n\n";
+                    }
+                    //Debug.Log("WebMap: Broadcasting");
+                }
+                else
+                {
+                    // Debug.Log("WebMap: Will not broadcast") ;
+                }
+            });
+            if (dataString.Length > 0)
+            {
+                mapDataServer.Broadcast("players\n" + dataString.Trim());
+               // webSocketHandler.Sessions.Broadcast("players\n" + dataString.Trim());
+            }
+            mapDataServer.Broadcast("time\n" + GetCurrentTimeString());
+           // Debug.Log("WebMap.cs: time=" + GetCurrentTimeString());
         }
 
         public void SavePinsIfNeeded()
@@ -162,6 +217,63 @@ namespace WebMap {
                 Debug.Log("WebMap: FAILED TO WRITE PINS FILE!");
             }
         }
+
+        // Not seen on Dedicated Server
+        //[HarmonyPatch(typeof(Character), "Awake")]
+        //private class CharacterAwakePatch
+        //{
+        //    static void Prefix()
+        //    {
+        //        Debug.Log("Character.Awake()");
+        //    }
+        //}
+
+        //[HarmonyPatch(typeof(Player), "Awake")]
+        //private class PlayerAwakePatch
+        //{
+        //    static void Prefix()
+        //    {
+        //        Debug.Log("Player.Awake()");
+        //    }
+        //}
+
+        // Not seen on Dedicated Server
+        //[HarmonyPatch(typeof(Player), "UpdatePlacement")]
+        //private class PlayerUpdatePlacementPatch
+        //{
+        //    static void Prefix(bool takeInput, float dt)
+        //    {
+        //        Debug.Log("Player.UpdatePlacement(): " + takeInput + "/" + dt);
+        //    }
+        //}
+
+       
+      
+
+
+        // TODO: implement "person has logged in"
+        [HarmonyPatch(typeof(ZRoutedRpc), "AddPeer")]
+        private class ZRoutedRpcAddPeerPatch
+        {
+            static void Prefix(ZNetPeer peer)
+            {
+                Debug.Log("ZRoutedRpc.AddPeer(): " + peer.m_playerName);
+                mapDataServer.Broadcast($"login\n{peer.m_playerName}");
+            }
+        }
+
+
+        // TODO: implement "person has logged out"
+        [HarmonyPatch(typeof(ZRoutedRpc), "RemovePeer")]
+        private class ZRoutedRpcRemovePeerPatch
+        {
+            static void Prefix(ZNetPeer peer)
+            {
+                Debug.Log("ZRoutedRpc.RemovePeer(): " + peer.m_playerName);
+                mapDataServer.Broadcast($"logout\n{peer.m_playerName}");
+            }
+        }
+
 
         [HarmonyPatch(typeof (ZoneSystem), "Start")]
         private class ZoneSystemPatch {
@@ -338,7 +450,7 @@ namespace WebMap {
         }
 
         [HarmonyPatch(typeof (ZRoutedRpc), "HandleRoutedRPC")]
-        private class ZRoutedRpcPatch
+        private class ZRoutedRpcHandleRoutedRPCPatch
         {
 
           //  private Dictionary<string, int> MessageTypes = new Dictionary<string, int>();
@@ -542,5 +654,26 @@ namespace WebMap {
             
         }
 
+
+        private string GetCurrentTimeString()
+        {
+            if (!EnvMan.instance)
+                return "";
+            float fraction = (float)typeof(EnvMan).GetField("m_smoothDayFraction", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(EnvMan.instance);
+
+            int hour = (int)(fraction * 24);
+            int minute = (int)((fraction * 24 - hour) * 60);
+            int second = (int)((((fraction * 24 - hour) * 60) - minute) * 60);
+
+            DateTime now = DateTime.Now;
+            DateTime theTime = new DateTime(now.Year, now.Month, now.Day, hour, minute, second);
+            int days = Traverse.Create(EnvMan.instance).Method("GetCurrentDay").GetValue<int>();
+            return "" + days.ToString() + ","+ fraction + "," + theTime.ToString("HH:mm:ss");
+          
+        }
+
+     
     }
+
+
 }

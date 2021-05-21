@@ -1,6 +1,6 @@
 
 var ws_override = "" ;
-var debug_add_player = "";
+
 
 var follow = "";
 var mapLayer;
@@ -71,16 +71,41 @@ $(document).ready ( function(){
 
 
     const actions = {
+        login: (lines, message) => {
+            const messageLines = message.split('\n');
+            console.log(messageLines);
+            addLog("login:  " + messageLines[1])
+        },
+        logout: (lines, message) => {
+            const messageLines = message.split('\n');
+            console.log(messageLines);
+            addLog("logout:  " + messageLines[1])
+        },
+        ondeath: (lines, message) => {
+            const messageLines = message.split('\n');
+            console.log(messageLines);
+            addLog("death:  " + messageLines[1])
+        },
+        time: (lines, message) => {
+            const messageLines = message.split('\n');
+            const messageParts = messageLines[1].split(',');
+           // addLog("<strong> day " + messageParts[0] + ",  " + messageParts[2] + "</strong>")
+           // console.log(messageParts);
+            $("#overlayTitle").html(server_config.world_name + " - day " + messageParts[0] + ". Time: " + messageParts[2]);
+        },
+
         say: (lines, message) => {
             const messageParts = message.split('\n');
             addLog("<strong>" + messageParts[2] + ": " + messageParts[3] + "</strong>")
             console.log(messageParts);
         },
+
         webchat: (lines, message) => {
             const messageParts = message.split('\n');
             addLog("<strong>" + messageParts[0] + ": " + messageParts[1] + "</strong>")
             console.log(messageParts);
         },
+
         players: (lines, message) => {
             const msg = message.replace(/^players\n/, '');
             const playerSections = msg.split('\n\n');
