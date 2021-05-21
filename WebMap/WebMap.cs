@@ -338,16 +338,37 @@ namespace WebMap {
         }
 
         [HarmonyPatch(typeof (ZRoutedRpc), "HandleRoutedRPC")]
-        private class ZRoutedRpcPatch {
-            static void Prefix(RoutedRPCData data) {
+        private class ZRoutedRpcPatch
+        {
+
+          //  private Dictionary<string, int> MessageTypes = new Dictionary<string, int>();
+
+
+            static void Prefix(RoutedRPCData data)
+            {
+
+                var targetName = "";
+                ZDO targetZDO;
+                if (!data.m_targetZDO.IsNone())
+                {
+                  targetZDO = ZDOMan.instance.GetZDO(data.m_targetZDO);
+                  targetName = targetZDO.m_type.ToString();
+                }
+                
+
                 ZNetPeer peer = ZNet.instance.GetPeer(data.m_senderPeerID);
                 var steamid = "";
                 try {
                     steamid = peer.m_rpc.GetSocket().GetHostName();
                 } catch {}
 
+             
+
                 if (data?.m_methodHash == "Say".GetStableHashCode()) {
-                    try {
+                    // private void RPC_Say(long sender, int ctype, string user, string text)
+
+                    try
+                    {
                         var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
                         var pos = zdoData.GetPosition();
                         ZPackage package = new ZPackage(data.m_parameters.GetArray());
@@ -409,11 +430,14 @@ namespace WebMap {
                         else if(!message.StartsWith("/"))
                         {
                             mapDataServer.Broadcast($"say\n{messageType}\n{userName}\n{message}");
-                            Debug.Log($"say\n{messageType}\n{userName}\n{message}");
+                            Debug.Log($"say\n{messageType}\n{userName}\n{message} / target={targetName}");
                         }
                     } catch {}
+
                 } else if (data?.m_methodHash == "ChatMessage".GetStableHashCode()) {
-                    try {
+                    // private void RPC_ChatMessage(long sender, Vector3 position, int type, string name, string text)
+                    try
+                    {
                         ZPackage package = new ZPackage(data.m_parameters.GetArray());
                         Vector3 pos = package.ReadVector3();
                         int messageType = package.ReadInt();
@@ -427,17 +451,96 @@ namespace WebMap {
                         else
                         {
                             mapDataServer.Broadcast($"chat\n{messageType}\n{userName}\n{pos}\n{message}");
-                            Debug.Log($"chat\n{messageType}\n{userName}\n{pos}\n{message}");
+                            Debug.Log($"chat\n{messageType}\n{userName}\n{pos}\n{message} / target={targetName}");
                         }
 
                     } catch {}
                 }
                 else if(data?.m_methodHash == "OnDeath".GetStableHashCode())
                 {
+                    // private void RPC_OnDeath(long sender)
                     // test
+                    var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
+                    var pos = zdoData.GetPosition();
+                    ZPackage package = new ZPackage(data.m_parameters.GetArray());
+
                     mapDataServer.Broadcast($"ondeath\n{peer.m_playerName}");
+                    Debug.Log($"ondeath -- {peer.m_playerName} / target={targetName}");
+                }
+                else if (data?.m_methodHash == "Message".GetStableHashCode())
+                {
+                    // private void RPC_Message(long sender, int type, string msg, int amount)
+
+                    var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
+                    var pos = zdoData.GetPosition();
+                    ZPackage package = new ZPackage(data.m_parameters.GetArray());
+
+                   
+                    int messageType = package.ReadInt();
+                    string msg = package.ReadString();
+                    int amount = package.ReadInt();
+
+
+                    mapDataServer.Broadcast($"message\n{peer.m_playerName}\n{messageType}\n{msg}\n{amount}");
+                    Debug.Log($"message -- {peer.m_playerName} - {msg} - {amount} / target={targetName}");
+                }
+                else if (data?.m_methodHash == "OnTargeted".GetStableHashCode())
+                {
+                    var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
+                    var pos = zdoData.GetPosition();
+                    ZPackage package = new ZPackage(data.m_parameters.GetArray());
+
+                    bool sensed = package.ReadBool();
+                    bool alerted = package.ReadBool();
+
+                    Debug.Log($"OnTargeted -- {peer.m_playerName} - sensed={sensed} - alerted={alerted} / target={targetName}");
+                }
+                else if (data?.m_methodHash == "UseStamina".GetStableHashCode())
+                {
+                    var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
+                    var pos = zdoData.GetPosition();
+                    ZPackage package = new ZPackage(data.m_parameters.GetArray());
+
+                    //float v = package.Read();
+                    //bool alerted = package.ReadBool();
+
+                    Debug.Log($"UseStamina -- {peer.m_playerName} / target={targetName}");
+                }
+                else if (data?.m_methodHash == "DamageText".GetStableHashCode())
+                {
+                    var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
+                    var pos = zdoData.GetPosition();
+                    ZPackage package = new ZPackage(data.m_parameters.GetArray());
+
+                    //float v = package.Read();
+                    //bool alerted = package.ReadBool();
+                    var pkg = package.ReadPackage();
+
+                    DamageText.TextType type = (DamageText.TextType)pkg.ReadInt();
+                    Vector3 vector = pkg.ReadVector3();
+                    float dmg = pkg.ReadSingle();
+                    bool flag = pkg.ReadBool();
+
+                    Debug.Log($"DamageText -- {peer.m_playerName} / type={type} / pos={vector} / dmg={dmg} / flag={flag} / target={targetName}");
+                }
+                else if (data?.m_methodHash == "Damage".GetStableHashCode())
+                {
+                    var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
+                    var pos = zdoData.GetPosition();
+                    ZPackage package = new ZPackage(data.m_parameters.GetArray());
+
+                    //  HitData dmg = package.
+
+                    // var zdid = data.m_targetZDO;
+                    //ZDOMan.instance.GetZDO(peer.m_characterID);
+                 //   var targetZdo = ZDOMan.instance.GetZDO(data.m_targetZDO);
+                    
+
+                    Debug.Log($"Damage -- {peer.m_playerName} -  / target={targetName}");
                 }
             }
+            
         }
+
     }
 }

@@ -302,7 +302,7 @@ $(document).ready ( function(){
     const init = () => {
         let hostobj = new URL(location.href);
 
-        let websocketUrl = "ws://"+hostobj;
+        let websocketUrl = "ws://"+hostobj.host;
         if(ws_override){
             websocketUrl = ws_override.split('?')[0].replace(/^http/, 'ws');
         }

@@ -75,10 +75,14 @@ namespace WebMap {
                     var health = zdoData.GetFloat("health", maxHealth);
                     maxHealth = Mathf.Max(maxHealth, health);
 
+                    var maxStamina = zdoData.GetFloat("max_stamina", 100f);
+                    var stamina = zdoData.GetFloat("stamina", maxStamina);
+                  //  maxStamina = Mathf.Max(maxStamina, stamina);
+
                     if (player.m_publicRefPos)
                     {
                         dataString +=
-                            $"{player.m_uid}\n{player.m_playerName}\n{str(pos.x)},{str(pos.y)},{str(pos.z)}\n{str(health)}\n{str(maxHealth)}\n\n";
+                            $"{player.m_uid}\n{player.m_playerName}\n{str(pos.x)},{str(pos.y)},{str(pos.z)}\n{str(health)}\n{str(maxHealth)}\n{str(stamina)}\n{str(maxStamina)}\n\n";
                     }
                     else
                     {
@@ -120,11 +124,12 @@ namespace WebMap {
             };
         }
 
-        public void SendGlobalMessage(string text)
+
+        public void SendGlobalMessage(string text, int messageType=1)
         {
             ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, "ShowMessage", new object[]
             {
-                2,
+                messageType,
                 "Webchat: " + text
             });
         }
@@ -434,12 +439,14 @@ namespace WebMap {
                 if (e.Request.QueryString["msg"] != null)
                 {
                     var messageToSend = e.Request.QueryString["msg"];
+                    var typeToSend = e.Request.QueryString["type"];
                     Debug.Log("MapDataServer.cs: Will send SendGlobalMessage(): " + messageToSend);
 
                     Broadcast($"webchat\n{messageToSend}");
                     
                     
-                    SendGlobalMessage(messageToSend);
+                    SendGlobalMessage(messageToSend, 2);
+
                     SendHttpResponse(ref res,
                         "{ \"result\" : \"ok: " + messageToSend + "\" }",
                         200,
