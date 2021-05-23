@@ -452,10 +452,6 @@ namespace WebMap {
         [HarmonyPatch(typeof (ZRoutedRpc), "HandleRoutedRPC")]
         private class ZRoutedRpcHandleRoutedRPCPatch
         {
-
-          //  private Dictionary<string, int> MessageTypes = new Dictionary<string, int>();
-
-
             static void Prefix(RoutedRPCData data)
             {
 
@@ -463,8 +459,12 @@ namespace WebMap {
                 ZDO targetZDO;
                 if (!data.m_targetZDO.IsNone())
                 {
-                  targetZDO = ZDOMan.instance.GetZDO(data.m_targetZDO);
-                  targetName = targetZDO.m_type.ToString();
+                    try
+                    {
+                        targetZDO = ZDOMan.instance.GetZDO(data.m_targetZDO);
+                        targetName = targetZDO.m_type.ToString();
+                    }
+                    catch { }
                 }
                 
 
@@ -473,8 +473,6 @@ namespace WebMap {
                 try {
                     steamid = peer.m_rpc.GetSocket().GetHostName();
                 } catch {}
-
-             
 
                 if (data?.m_methodHash == "Say".GetStableHashCode()) {
                     // private void RPC_Say(long sender, int ctype, string user, string text)
@@ -571,84 +569,97 @@ namespace WebMap {
                 else if(data?.m_methodHash == "OnDeath".GetStableHashCode())
                 {
                     // private void RPC_OnDeath(long sender)
-                    // test
-                    var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
-                    var pos = zdoData.GetPosition();
-                    ZPackage package = new ZPackage(data.m_parameters.GetArray());
+                    try
+                    {
+                        var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
+                        var pos = zdoData.GetPosition();
+                        ZPackage package = new ZPackage(data.m_parameters.GetArray());
 
-                    mapDataServer.Broadcast($"ondeath\n{peer.m_playerName}");
-                    Debug.Log($"ondeath -- {peer.m_playerName} / target={targetName}");
+                        mapDataServer.Broadcast($"ondeath\n{peer.m_playerName}");
+                        Debug.Log($"ondeath -- {peer.m_playerName} / target={targetName}");
+                    }
+                    catch { }
                 }
                 else if (data?.m_methodHash == "Message".GetStableHashCode())
                 {
                     // private void RPC_Message(long sender, int type, string msg, int amount)
+                    try
+                    {
+                        var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
+                        var pos = zdoData.GetPosition();
+                        ZPackage package = new ZPackage(data.m_parameters.GetArray());
+                       
+                        int messageType = package.ReadInt();
+                        string msg = package.ReadString();
+                        int amount = package.ReadInt();
 
-                    var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
-                    var pos = zdoData.GetPosition();
-                    ZPackage package = new ZPackage(data.m_parameters.GetArray());
-
-                   
-                    int messageType = package.ReadInt();
-                    string msg = package.ReadString();
-                    int amount = package.ReadInt();
-
-
-                    mapDataServer.Broadcast($"message\n{peer.m_playerName}\n{messageType}\n{msg}\n{amount}");
-                    Debug.Log($"message -- {peer.m_playerName} - {msg} - {amount} / target={targetName}");
+                        mapDataServer.Broadcast($"message\n{peer.m_playerName}\n{messageType}\n{msg}\n{amount}");
+                        Debug.Log($"message -- {peer.m_playerName} - {msg} - {amount} / target={targetName}");
+                    }
+                    catch { }
                 }
                 else if (data?.m_methodHash == "OnTargeted".GetStableHashCode())
                 {
-                    var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
-                    var pos = zdoData.GetPosition();
-                    ZPackage package = new ZPackage(data.m_parameters.GetArray());
+                    try
+                    {
+                        var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
+                        var pos = zdoData.GetPosition();
+                        ZPackage package = new ZPackage(data.m_parameters.GetArray());
 
-                    bool sensed = package.ReadBool();
-                    bool alerted = package.ReadBool();
+                        bool sensed = package.ReadBool();
+                        bool alerted = package.ReadBool();
 
-                    Debug.Log($"OnTargeted -- {peer.m_playerName} - sensed={sensed} - alerted={alerted} / target={targetName}");
+                        Debug.Log($"OnTargeted -- {peer.m_playerName} - sensed={sensed} - alerted={alerted} / target={targetName}");
+                    }
+                    catch { }
                 }
                 else if (data?.m_methodHash == "UseStamina".GetStableHashCode())
                 {
-                    var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
-                    var pos = zdoData.GetPosition();
-                    ZPackage package = new ZPackage(data.m_parameters.GetArray());
+                    try
+                    {
+                        var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
+                        var pos = zdoData.GetPosition();
+                        ZPackage package = new ZPackage(data.m_parameters.GetArray());
 
-                    //float v = package.Read();
-                    //bool alerted = package.ReadBool();
+                        //float v = package.Read();
+                        //bool alerted = package.ReadBool();
 
-                    Debug.Log($"UseStamina -- {peer.m_playerName} / target={targetName}");
+                        Debug.Log($"UseStamina -- {peer.m_playerName} / target={targetName}");
+                    }
+                    catch { }
                 }
                 else if (data?.m_methodHash == "DamageText".GetStableHashCode())
                 {
-                    var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
-                    var pos = zdoData.GetPosition();
-                    ZPackage package = new ZPackage(data.m_parameters.GetArray());
+                    try
+                    { 
+                        var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
+                        var pos = zdoData.GetPosition();
+                        ZPackage package = new ZPackage(data.m_parameters.GetArray());
 
-                    //float v = package.Read();
-                    //bool alerted = package.ReadBool();
-                    var pkg = package.ReadPackage();
+                        //float v = package.Read();
+                        //bool alerted = package.ReadBool();
+                        var pkg = package.ReadPackage();
 
-                    DamageText.TextType type = (DamageText.TextType)pkg.ReadInt();
-                    Vector3 vector = pkg.ReadVector3();
-                    float dmg = pkg.ReadSingle();
-                    bool flag = pkg.ReadBool();
+                        DamageText.TextType type = (DamageText.TextType)pkg.ReadInt();
+                        Vector3 vector = pkg.ReadVector3();
+                        float dmg = pkg.ReadSingle();
+                        bool flag = pkg.ReadBool();
 
-                    Debug.Log($"DamageText -- {peer.m_playerName} / type={type} / pos={vector} / dmg={dmg} / flag={flag} / target={targetName}");
+                        Debug.Log($"DamageText -- {peer.m_playerName} / type={type} / pos={vector} / dmg={dmg} / flag={flag} / target={targetName}");
+                    }
+                    catch { }
                 }
                 else if (data?.m_methodHash == "Damage".GetStableHashCode())
                 {
-                    var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
-                    var pos = zdoData.GetPosition();
-                    ZPackage package = new ZPackage(data.m_parameters.GetArray());
+                    try
+                    {
+                        var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
+                        var pos = zdoData.GetPosition();
+                        ZPackage package = new ZPackage(data.m_parameters.GetArray());
 
-                    //  HitData dmg = package.
-
-                    // var zdid = data.m_targetZDO;
-                    //ZDOMan.instance.GetZDO(peer.m_characterID);
-                 //   var targetZdo = ZDOMan.instance.GetZDO(data.m_targetZDO);
-                    
-
-                    Debug.Log($"Damage -- {peer.m_playerName} -  / target={targetName}");
+                        Debug.Log($"Damage -- {peer.m_playerName} -  / target={targetName}");
+                    }
+                    catch { }
                 }
             }
             

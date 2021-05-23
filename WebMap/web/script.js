@@ -1,6 +1,5 @@
 
-var ws_override = "http://mushroom.runnane.no:3000/" ;
-
+var ws_override = "" ;
 
 var follow = "";
 var mapLayer;
