@@ -71,4 +71,7 @@ html, body, #map {
 	height: 8px;
 	display: inline-block;
 }
-.alertify{ z-index:999999 !important; }
+
+.leaflet-image-layer {
+	image-rendering: pixelated;
+}

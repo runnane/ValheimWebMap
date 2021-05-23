@@ -1,5 +1,5 @@
 
-var ws_override = "" ;
+var ws_override = "http://mushroom.runnane.no:3000/" ;
 
 
 var follow = "";
@@ -34,7 +34,6 @@ const parseVector3 = str => {
 $(document).ready ( function(){
 
     $('#sendChat').click(function(){
-
        const textToSend = $('#chatbox').val();
        if(textToSend){
            //addLog("Sent chat: "+ textToSend);
@@ -69,17 +68,24 @@ $(document).ready ( function(){
 
     map.on('click', addMarker);
 
-
     const actions = {
         login: (lines, message) => {
             const messageLines = message.split('\n');
-            console.log(messageLines);
-            addLog("login:  " + messageLines[1])
+            if(messageLines[1]){
+                addLog("login:  " + messageLines[1])
+            }else{
+                console.log(messageLines);
+            }
         },
         logout: (lines, message) => {
             const messageLines = message.split('\n');
-            console.log(messageLines);
-            addLog("logout:  " + messageLines[1])
+            if(messageLines[1]){
+                addLog("logout:  " + messageLines[1])
+            }else{
+                console.log(messageLines);
+            }
+
+
         },
         ondeath: (lines, message) => {
             const messageLines = message.split('\n');
@@ -88,16 +94,20 @@ $(document).ready ( function(){
         },
         time: (lines, message) => {
             const messageLines = message.split('\n');
-            const messageParts = messageLines[1].split(',');
-           // addLog("<strong> day " + messageParts[0] + ",  " + messageParts[2] + "</strong>")
-           // console.log(messageParts);
-            $("#overlayTitle").html(server_config.world_name + " - day " + messageParts[0] + ". Time: " + messageParts[2]);
+            if(messageLines[1]){
+                const messageParts = messageLines[1].split(',');
+                const clock = messageParts[2].split(':');
+                $("#overlayTitle").html(server_config.world_name + " / Day " + messageParts[0] + " / Time: " + clock[0] + ":" + clock[1]);
+
+            }else{
+                console.log("malformed time: ", messageLines);
+            }
         },
 
         say: (lines, message) => {
             const messageParts = message.split('\n');
             addLog("<strong>" + messageParts[2] + ": " + messageParts[3] + "</strong>")
-            console.log(messageParts);
+            //console.log(messageParts);
         },
 
         webchat: (lines, message) => {
@@ -435,7 +445,7 @@ $(document).ready ( function(){
 
             });
         }else{
-            playerHtml = "None";
+            playerHtml = "No players online";
         }
         $('#overlayPlayers').html(playerHtml);
 
