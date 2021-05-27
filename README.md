@@ -7,7 +7,6 @@ Fork of Valheim WebMap with the following changes:
 * custom icons
 
 ## Todo
-* follow
 * ping
 * more server events (kill, deaths, login/logout, chat)
 * auth
