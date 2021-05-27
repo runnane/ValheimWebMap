@@ -7,6 +7,7 @@ using System.Reflection;
 using BepInEx;
 using UnityEngine;
 using HarmonyLib;
+using WebSocketSharp;
 using static WebMap.WebMapConfig;
 
 using static ZRoutedRpc;
@@ -28,11 +29,16 @@ namespace WebMap {
         static string worldDataPath;
 
         private bool fogTextureNeedsSaving = false;
+        public static BepInEx.Logging.ManualLogSource harmonyLog;
+        public Harmony harmony;
 
         //The Awake() method is run at the very start when the game is initialized.
         public void Awake() {
-            var harmony = new Harmony("no.runnane.valheim.webmap");
+            
+            harmony = new Harmony("no.runnane.valheim.webmap");
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), (string) null);
+
+            harmonyLog = Logger;
 
             var pluginPath = System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             WebMapConfig.readConfigFile(Path.Combine(pluginPath, "config.json"));
@@ -50,7 +56,7 @@ namespace WebMap {
             try {
                 mapDataServer.mapImageData = File.ReadAllBytes(mapImagePath);
             } catch (Exception e) {
-                Debug.Log("WebMap: Failed to read map image data from disk. " + e.Message);
+                Logger.LogError("WebMap: Failed to read map image data from disk. " + e.Message);
             }
 
             var fogImagePath = Path.Combine(worldDataPath, "fog.png");
@@ -60,7 +66,7 @@ namespace WebMap {
                 fogTexture.LoadImage(fogBytes);
                 mapDataServer.fogTexture = fogTexture;
             } catch (Exception e) {
-                Debug.Log("WebMap: Failed to read fog image data from disk... Making new fog image..." + e.Message);
+                Logger.LogWarning("WebMap: Failed to read fog image data from disk... Making new fog image..." + e.Message);
                 var fogTexture = new Texture2D(WebMapConfig.TEXTURE_SIZE, WebMapConfig.TEXTURE_SIZE, TextureFormat.RGB24, false);
                 var fogColors = new Color32[WebMapConfig.TEXTURE_SIZE * WebMapConfig.TEXTURE_SIZE];
                 for (var t = 0; t < fogColors.Length; t++) {
@@ -72,8 +78,9 @@ namespace WebMap {
                 mapDataServer.fogTexture = fogTexture;
                 try {
                     File.WriteAllBytes(fogImagePath, fogPngBytes);
-                } catch {
-                    Debug.Log("WebMap: FAILED TO WRITE FOG FILE!");
+                } catch (Exception e2)
+                {
+                    harmonyLog.LogError("WebMap: FAILED TO WRITE FOG FILE! " + e2);
                 }
             }
 
@@ -89,13 +96,13 @@ namespace WebMap {
                 var pinsLines = File.ReadAllLines(mapPinsFile);
                 mapDataServer.pins = new List<string>(pinsLines);
             } catch (Exception e) {
-                Debug.Log("WebMap: Failed to read pins.csv from disk. " + e.Message);
+                harmonyLog.LogError("WebMap: Failed to read pins.csv from disk. " + e.Message);
             }
         }
 
         public void BroadcastWebsocket()
         {
-          //  Debug.Log("WebMap: BroadcastWebsocket() ");
+
 
             var dataString = "";
             mapDataServer.players.ForEach(player =>
@@ -127,20 +134,20 @@ namespace WebMap {
                     {
                         dataString += $"{player.m_uid}\n{player.m_playerName}\nhidden\n\n";
                     }
-                    //Debug.Log("WebMap: Broadcasting");
+                   
                 }
                 else
                 {
-                    // Debug.Log("WebMap: Will not broadcast") ;
+                    
                 }
             });
             if (dataString.Length > 0)
             {
                 mapDataServer.Broadcast("players\n" + dataString.Trim());
-               // webSocketHandler.Sessions.Broadcast("players\n" + dataString.Trim());
+               
             }
             mapDataServer.Broadcast("time\n" + GetCurrentTimeString());
-           // Debug.Log("WebMap.cs: time=" + GetCurrentTimeString());
+           
         }
 
         public void SavePinsIfNeeded()
@@ -154,11 +161,11 @@ namespace WebMap {
 
 
         public void UpdateFogTexture() {
-            //Debug.Log("WebMap: UpdateFogTexture()");
+           
             int pixelExploreRadius = (int)Mathf.Ceil(WebMapConfig.EXPLORE_RADIUS / WebMapConfig.PIXEL_SIZE);
             int pixelExploreRadiusSquared = pixelExploreRadius * pixelExploreRadius;
             var halfTextureSize = WebMapConfig.TEXTURE_SIZE / 2;
-          //  Color transparentWhite = new Color(0, 0, 0, 0);
+        
 
             mapDataServer.players.ForEach(player => {
                 if (player.m_publicRefPos) {
@@ -192,64 +199,30 @@ namespace WebMap {
         }
 
         public void SaveFogTexture() {
-            //Debug.Log("WebMap: SaveFogTexture()");
+           
             if (mapDataServer.players.Count > 0 && fogTextureNeedsSaving) {
                 byte[] pngBytes = mapDataServer.fogTexture.EncodeToPNG();
 
-                // Debug.Log("Saving fog file...");
+              
                 try {
                     File.WriteAllBytes(Path.Combine(worldDataPath, "fog.png"), pngBytes);
                     fogTextureNeedsSaving = false;
-                   // Debug.Log("WebMap: Wrote fog file");
+                   
                 } catch {
-                    Debug.Log("WebMap: FAILED TO WRITE FOG FILE!");
+                    Logger.LogError("WebMap: FAILED TO WRITE FOG FILE!");
                 }
             }
         }
 
         public static void SavePins() {
-            Debug.Log("WebMap: SavePins()");
             var mapPinsFile = Path.Combine(worldDataPath, "pins.csv");
             try {
                 File.WriteAllLines(mapPinsFile, mapDataServer.pins);
-                Debug.Log("WebMap: Wrote pins file");
+               // harmonyLog.Log("WebMap: Wrote pins file");
             } catch {
-                Debug.Log("WebMap: FAILED TO WRITE PINS FILE!");
+                harmonyLog.LogError("WebMap: FAILED TO WRITE PINS FILE!");
             }
         }
-
-        // Not seen on Dedicated Server
-        //[HarmonyPatch(typeof(Character), "Awake")]
-        //private class CharacterAwakePatch
-        //{
-        //    static void Prefix()
-        //    {
-        //        Debug.Log("Character.Awake()");
-        //    }
-        //}
-
-        //[HarmonyPatch(typeof(Player), "Awake")]
-        //private class PlayerAwakePatch
-        //{
-        //    static void Prefix()
-        //    {
-        //        Debug.Log("Player.Awake()");
-        //    }
-        //}
-
-        // Not seen on Dedicated Server
-        //[HarmonyPatch(typeof(Player), "UpdatePlacement")]
-        //private class PlayerUpdatePlacementPatch
-        //{
-        //    static void Prefix(bool takeInput, float dt)
-        //    {
-        //        Debug.Log("Player.UpdatePlacement(): " + takeInput + "/" + dt);
-        //    }
-        //}
-
-       
-      
-
 
         // TODO: implement "person has logged in"
         [HarmonyPatch(typeof(ZRoutedRpc), "AddPeer")]
@@ -257,8 +230,10 @@ namespace WebMap {
         {
             static void Prefix(ZNetPeer peer)
             {
-                Debug.Log("ZRoutedRpc.AddPeer(): " + peer.m_playerName);
+                harmonyLog.LogInfo("ZRoutedRpc.AddPeer(): " + peer.m_playerName);
                 mapDataServer.Broadcast($"login\n{peer.m_playerName}");
+
+            
             }
         }
 
@@ -269,7 +244,7 @@ namespace WebMap {
         {
             static void Prefix(ZNetPeer peer)
             {
-                Debug.Log("ZRoutedRpc.RemovePeer(): " + peer.m_playerName);
+                harmonyLog.LogInfo("ZRoutedRpc.RemovePeer(): " + peer.m_playerName);
                 mapDataServer.Broadcast($"logout\n{peer.m_playerName}");
             }
         }
@@ -360,10 +335,10 @@ namespace WebMap {
                 WebMapConfig.WORLD_START_POS = startPos;
 
                 if (mapDataServer.mapImageData != null) {
-                    Debug.Log("WebMap: MAP ALREADY BUILT!");
+                    harmonyLog.LogInfo("WebMap: MAP ALREADY BUILT!");
                     return;
                 }
-                Debug.Log("WebMap: BUILD MAP!");
+                harmonyLog.LogInfo("WebMap: BUILD MAP!");
 
                 int num = WebMapConfig.TEXTURE_SIZE / 2;
                 float num2 = WebMapConfig.PIXEL_SIZE / 2f;
@@ -435,10 +410,11 @@ namespace WebMap {
                 mapDataServer.mapImageData = pngBytes;
                 try {
                     File.WriteAllBytes(Path.Combine(worldDataPath, "map"), pngBytes);
+                    harmonyLog.LogInfo("WebMap: BUILDING MAP DONE!");
                 } catch {
-                    Debug.Log("WebMap: FAILED TO WRITE MAP FILE!");
+                    harmonyLog.LogError("WebMap: FAILED TO WRITE MAP FILE!");
                 }
-                Debug.Log("WebMap: BUILDING MAP DONE!");
+                
             }
         }
 
@@ -499,8 +475,9 @@ namespace WebMap {
                             if (startIdx < messageParts.Length) {
                                 pinText = String.Join(" ", messageParts, startIdx, messageParts.Length - startIdx);
                             }
-                            if (pinText.Length > 20) {
-                                pinText = pinText.Substring(0, 20);
+                            if (pinText.Length > 40) {
+                                pinText = pinText.Substring(0, 40);
+                              
                             }
                             var safePinsText = Regex.Replace(pinText, @"[^a-zA-Z0-9 ]", "");
                             var uuId = Guid.NewGuid();
@@ -508,11 +485,14 @@ namespace WebMap {
                             mapDataServer.AddPin(steamid, pinId, pinType, userName, pos, safePinsText);
 
                             var usersPins = mapDataServer.pins.FindAll(pin => pin.StartsWith(steamid));
+                            
                             var numOverflowPins = usersPins.Count - WebMapConfig.MAX_PINS_PER_USER;
                             for (var t = numOverflowPins; t > 0; t--) {
                                 var pinIdx = mapDataServer.pins.FindIndex(pin => pin.StartsWith(steamid));
-                                mapDataServer.RemovePin(pinIdx);
+                                // mapDataServer.RemovePin(pinIdx);
+                                harmonyLog.LogInfo($"To many pins, deleting oldest one (ONLY DEBUG; WILL NOT DO)");
                             }
+                            
                             SavePins();
                         } else if (message.StartsWith("/undoPin")) {
                             var pinIdx = mapDataServer.pins.FindLastIndex(pin => pin.StartsWith(steamid));
@@ -540,9 +520,13 @@ namespace WebMap {
                         else if(!message.StartsWith("/"))
                         {
                             mapDataServer.Broadcast($"say\n{messageType}\n{userName}\n{message}");
-                            Debug.Log($"say\n{messageType}\n{userName}\n{message} / target={targetName}");
+                            harmonyLog.LogInfo($"say\n{messageType}\n{userName}\n{message} / target={targetName}");
                         }
-                    } catch {}
+                    }
+                    catch
+                    {
+                        harmonyLog.LogError($"Say() exception");
+                    }
 
                 } else if (data?.m_methodHash == "ChatMessage".GetStableHashCode()) {
                     // private void RPC_ChatMessage(long sender, Vector3 position, int type, string name, string text)
@@ -561,10 +545,14 @@ namespace WebMap {
                         else
                         {
                             mapDataServer.Broadcast($"chat\n{messageType}\n{userName}\n{pos}\n{message}");
-                            Debug.Log($"chat\n{messageType}\n{userName}\n{pos}\n{message} / target={targetName}");
+                            harmonyLog.LogInfo($"ChatMessage() chat\n{messageType}\n{userName}\n{pos}\n{message} / target={targetName}");
                         }
 
-                    } catch {}
+                    }
+                    catch
+                    {
+                        harmonyLog.LogError($"ChatMessage() exception");
+                    }
                 }
                 else if(data?.m_methodHash == "OnDeath".GetStableHashCode())
                 {
@@ -576,9 +564,12 @@ namespace WebMap {
                         ZPackage package = new ZPackage(data.m_parameters.GetArray());
 
                         mapDataServer.Broadcast($"ondeath\n{peer.m_playerName}");
-                        Debug.Log($"ondeath -- {peer.m_playerName} / target={targetName}");
+                        harmonyLog.LogInfo($"RPC_OnDeath() -- {peer.m_playerName} / target={targetName}");
                     }
-                    catch { }
+                    catch
+                    {
+                        harmonyLog.LogError($"RPC_OnDeath() exception");
+                    }
                 }
                 else if (data?.m_methodHash == "Message".GetStableHashCode())
                 {
@@ -588,46 +579,21 @@ namespace WebMap {
                         var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
                         var pos = zdoData.GetPosition();
                         ZPackage package = new ZPackage(data.m_parameters.GetArray());
-                       
+
                         int messageType = package.ReadInt();
                         string msg = package.ReadString();
                         int amount = package.ReadInt();
 
                         mapDataServer.Broadcast($"message\n{peer.m_playerName}\n{messageType}\n{msg}\n{amount}");
-                        Debug.Log($"message -- {peer.m_playerName} - {msg} - {amount} / target={targetName}");
+                        harmonyLog.LogInfo($"RPC_Message() -- {peer.m_playerName} / {msg} - {amount} / target={targetName}");
                     }
-                    catch { }
-                }
-                else if (data?.m_methodHash == "OnTargeted".GetStableHashCode())
-                {
-                    try
+                    catch
                     {
-                        var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
-                        var pos = zdoData.GetPosition();
-                        ZPackage package = new ZPackage(data.m_parameters.GetArray());
+                        harmonyLog.LogError($"RPC_Message() exception");
 
-                        bool sensed = package.ReadBool();
-                        bool alerted = package.ReadBool();
-
-                        Debug.Log($"OnTargeted -- {peer.m_playerName} - sensed={sensed} - alerted={alerted} / target={targetName}");
                     }
-                    catch { }
                 }
-                else if (data?.m_methodHash == "UseStamina".GetStableHashCode())
-                {
-                    try
-                    {
-                        var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
-                        var pos = zdoData.GetPosition();
-                        ZPackage package = new ZPackage(data.m_parameters.GetArray());
-
-                        //float v = package.Read();
-                        //bool alerted = package.ReadBool();
-
-                        Debug.Log($"UseStamina -- {peer.m_playerName} / target={targetName}");
-                    }
-                    catch { }
-                }
+             
                 else if (data?.m_methodHash == "DamageText".GetStableHashCode())
                 {
                     try
@@ -645,9 +611,12 @@ namespace WebMap {
                         float dmg = pkg.ReadSingle();
                         bool flag = pkg.ReadBool();
 
-                        Debug.Log($"DamageText -- {peer.m_playerName} / type={type} / pos={vector} / dmg={dmg} / flag={flag} / target={targetName}");
+                        harmonyLog.LogInfo($"RPC_DamageText() -- {peer.m_playerName} / type={type} / pos={vector} / dmg={dmg} / flag={flag} / target={targetName}");
                     }
-                    catch { }
+                    catch
+                    {
+                        harmonyLog.LogError($"RPC_DamageText() exception");
+                    }
                 }
                 else if (data?.m_methodHash == "Damage".GetStableHashCode())
                 {
@@ -657,9 +626,91 @@ namespace WebMap {
                         var pos = zdoData.GetPosition();
                         ZPackage package = new ZPackage(data.m_parameters.GetArray());
 
-                        Debug.Log($"Damage -- {peer.m_playerName} -  / target={targetName}");
+                        harmonyLog.LogInfo($"RPC_Damage() -- {peer.m_playerName} / target={targetName}");
                     }
-                    catch { }
+                    catch
+                    {
+                        harmonyLog.LogError($"RPC_Damage() exception");
+                    }
+                }
+                else if (data?.m_methodHash == "DestroyZDO".GetStableHashCode())
+                {
+                    try
+                    {
+                        // supress
+                        //ZPackage pkg = new ZPackage(data.m_parameters.GetArray());
+                        //var pkg2 = pkg.ReadPackage();
+                        //var numberofitems = pkg2.ReadInt();
+                        //for (int i = 0; i < numberofitems; i++)
+                        //{
+                        //    ZDOID uid = pkg.ReadZDOID();
+                            
+                        //}
+                        //harmonyLog.LogInfo($"DestroyZDO() -- {peer.m_playerName} / numberofitems={numberofitems} / target={targetName}");
+                    }
+                    catch (Exception e)
+                    {
+                        harmonyLog.LogError($"DestroyZDO() exception " + e);
+                    }
+                }
+                else if (data?.m_methodHash == "SetEvent".GetStableHashCode())
+                {
+                    try
+                    {
+                        //   var zdoData = ZDOMan.instance.GetZDO(peer.m_characterID);
+                        //   var pos = zdoData.GetPosition();
+
+                        ZPackage pkg = new ZPackage(data.m_parameters.GetArray());
+
+                        var eventName = pkg.ReadString();
+                        var time = pkg.ReadSingle();
+                        var eventPos = pkg.ReadVector3();
+
+
+                        if (!eventName.IsNullOrEmpty())
+                        {
+                            harmonyLog.LogInfo($"SetEvent() -- eventName={eventName} / time={time} / eventPos={eventPos} / target={targetName}");
+                        }
+                        
+                    }
+                    catch (Exception e)
+                    {
+                        harmonyLog.LogError($"SetEvent() exception " + e);
+                    }
+                }
+                else
+                {
+                    // Debug 
+
+
+                    //var methods = new List<string>() { "Jump", "OnJump", "SetMoveDir", "AddDPS", "AddFire", "BlockAttack", "UseStamina", "OnTargeted", "SetHealth", "SetCrouch", 
+                    //    "SetLookDir","SetRun", "Stagger", "Grow", "Shake", "CreateFragments", "RemotePrint","Pickup","Move","Die","Destroy","Awake","Loot","AddOre","EmptyProcessed",
+                    //    "Interact","Hit","Create","Start","UseItem","UpdateTeleport","UseDoor","DropItem","AddNoise","Alert","Pick","Forward","Stop","OnHit","AddStatusEffect",
+                    //    "Heal","AddFuel","OnNearProjectileHit","SleepStop","SleepStart","Ping", "Pong","DiscoverLocationRespons", "DiscoverClosestLocation",
+                    //    "DestroyZDO","RequestZDO","SpawnObject","SetGlobalKey","GlobalKeys","LocationIcons","SetOwner","Extract","ResetCloth","SetTamed","RequestOpen","OpenRespons",
+                    //    "RequestTakeAll", "TakeAllRespons","RequestOpen","SetSlotVisual","RemoveDoneItem","AddItem","Tap","Pickup","RequestPickup","Nibble","Step","SetPicked",
+                    //    "ApplyOperation"
+
+
+                    //};
+                    //bool found = false;
+                    //foreach (string method in methods)
+                    //{
+                    //    if (data?.m_methodHash == method.GetStableHashCode())
+                    //    {
+                    //        found = true;
+                    //        harmonyLog.LogInfo($" -> DEBUG: {method}() ");
+                    //    }
+                        
+                    //}
+
+                    //if (!found)
+                    //{
+                    //    // Unknown RPC message
+                    //    harmonyLog.LogInfo($"<unknown rpc message> hash={data.m_methodHash}");
+                    //}
+                   
+
                 }
             }
             

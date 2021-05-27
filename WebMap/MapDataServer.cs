@@ -1,13 +1,10 @@
 using System;
 using System.Text;
 using System.Collections.Generic;
-using System.Diagnostics.Eventing.Reader;
 using System.IO;
 using System.Reflection;
-using HarmonyLib;
 using WebSocketSharp.Net;
 using WebSocketSharp.Server;
-
 using UnityEngine;
 using static WebMap.WebMapConfig;
 using System.Text.RegularExpressions;
@@ -16,30 +13,17 @@ namespace WebMap {
 
     public class WebSocketHandler : WebSocketBehavior {
         public WebSocketHandler() {}
-        // protected override void OnOpen() {
-        //     Context.WebSocket.Send("hi " + ID);
-        // }
-
-        // protected override void OnClose(CloseEventArgs e) {
-        // }
-
-        // protected override void OnMessage(MessageEventArgs e) {
-        //     Sessions.Broadcast(e.Data);
-        // }
     }
 
     public class MapDataServer {
         private HttpServer httpServer;
         private string publicRoot;
         private Dictionary<string, byte[]> fileCache;
-        //private System.Threading.Timer broadcastTimer;
         private WebSocketServiceHost webSocketHandler;
-
         public byte[] mapImageData;
         public Texture2D fogTexture;
         public List<ZNetPeer> players = new List<ZNetPeer>();
         public List<string> pins = new List<string>();
-
         public bool NeedSave = false;
 
         static Dictionary<string, string> contentTypes = new Dictionary<string, string>() {
@@ -56,56 +40,8 @@ namespace WebMap {
 
             webSocketHandler = httpServer.WebSocketServices["/"];
           
-            Debug.Log($"WebMap: MapDataServer() interval={WebMapConfig.PLAYER_UPDATE_INTERVAL}");
-            //broadcastTimer = new System.Threading.Timer((e) => {
-                /*
-                var dataString = "";
-                players.ForEach(player =>
-                {
-                    ZDO zdoData = null;
-                    try
-                    {
-                        zdoData = ZDOMan.instance.GetZDO(player.m_characterID);
-                    }
-                    catch { }
-
-                    if (zdoData != null)
-                    {
-                        var pos = zdoData.GetPosition();
-                        var maxHealth = zdoData.GetFloat("max_health", 25f);
-                        var health = zdoData.GetFloat("health", maxHealth);
-                        maxHealth = Mathf.Max(maxHealth, health);
-
-                        var maxStamina = zdoData.GetFloat("max_stamina", 100f);
-                        var stamina = zdoData.GetFloat("stamina", maxStamina);
-                      //  maxStamina = Mathf.Max(maxStamina, stamina);
-
-                        if (player.m_publicRefPos)
-                        {
-                            dataString +=
-                                $"{player.m_uid}\n{player.m_playerName}\n{str(pos.x)},{str(pos.y)},{str(pos.z)}\n{str(health)}\n{str(maxHealth)}\n{str(stamina)}\n{str(maxStamina)}\n\n";
-                        }
-                        else
-                        {
-                            dataString += $"{player.m_uid}\n{player.m_playerName}\nhidden\n\n";
-                        }
-                        //Debug.Log("WebMap: Broadcasting");
-                    }
-                    else
-                    {
-                        // Debug.Log("WebMap: Will not broadcast") ;
-                    }
-                });
-                if (dataString.Length > 0) {
-                    webSocketHandler.Sessions.Broadcast("players\n" + dataString.Trim());
-                }
-                webSocketHandler.Sessions.Broadcast("players\n" + dataString.Trim());
-
-                */
-            //}, null, TimeSpan.Zero, TimeSpan.FromSeconds(WebMapConfig.PLAYER_UPDATE_INTERVAL));
-
+            //Debug.Log($"WebMap: MapDataServer() interval={WebMapConfig.PLAYER_UPDATE_INTERVAL}");
             publicRoot = Path.Combine(System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "web");
-
             fileCache = new Dictionary<string, byte[]>();
 
             httpServer.OnGet += (sender, e) =>
@@ -139,7 +75,6 @@ namespace WebMap {
         }
 
         public void Stop() {
-            //broadcastTimer.Dispose();
             httpServer.Stop();
         }
 
@@ -247,26 +182,17 @@ namespace WebMap {
 
         private bool ProcessSpecialAPIRoutes(HttpRequestEventArgs e)
         {
-           // Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() Url: {e.Request.Url}"); 
-            //Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() RawUrl: {e.Request.RawUrl}");
-            //Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() QueryString: {e.Request.QueryString}");
-            
-
+           
             var req = e.Request;
             var res = e.Response;
             var rawRequestPath = req.RawUrl;
-            byte[] textBytes;
             if (!rawRequestPath.StartsWith("/api/"))
             {
                 return false;
             }
 
             if (rawRequestPath.StartsWith("/api/pins")){
-                res.Headers.Add(HttpResponseHeader.CacheControl, "no-cache");
-                res.Headers.Add("Access-Control-Allow-Origin: *");
-                res.ContentType = "application/json";
-                res.StatusCode = 200;
-
+                
                 var sb = new StringBuilder();
                 sb.AppendLine("{ \"pins\" : [");
                 string delimiter = "";
@@ -287,189 +213,242 @@ namespace WebMap {
                 }
 
                 sb.AppendLine("]}");
-                textBytes = Encoding.UTF8.GetBytes(sb.ToString());
-                res.ContentLength64 = textBytes.Length;
-                res.Close(textBytes, true);
+
+                SendHttpResponse(ref res,
+                    "{ \"result\" : \"ok: " + sb.ToString() + "\" }",
+                    200,
+                    true,
+                    "application/json");
+
                 return true;
             }
 
-            Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() Will start with edit functions");
-
-            if (rawRequestPath.StartsWith("/api/pin/"))
+           // Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() Will start with edit functions");
+            try
             {
-                Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() -> /api/pin/");
-                if (e.Request.QueryString.ToString().Length == 0)
+
+
+                if (rawRequestPath.StartsWith("/api/pin/"))
                 {
-                    Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() INVALID PAYLOAD");
+                   // Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() -> /api/pin/");
+                    if (e.Request.QueryString.ToString().Length == 0)
+                    {
+                       // Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() INVALID PAYLOAD");
 
-                    res.StatusCode = 500;
-                    textBytes = Encoding.UTF8.GetBytes("{ \"result\" : \"invalid payload (no parms)\" }");
-                    res.ContentLength64 = textBytes.Length;
-                    res.Close(textBytes, true);
-                    return true;
-                }
-                
+                     
+                        SendHttpResponse(ref res,
+                            "{ \"result\" : \"invalid payload (no parms)\" }",
+                            500,
+                            true,
+                            "application/json");
+
+                        return true;
+                    }
 
 
-                res.Headers.Add(HttpResponseHeader.CacheControl, "no-cache");
-                res.Headers.Add("Access-Control-Allow-Origin: *");
-                res.ContentType = "application/json";
+                    if (rawRequestPath.StartsWith("/api/pin/new/"))
+                    {
 
-              
-              
-                if(rawRequestPath.StartsWith("/api/pin/new/")){
 
-                
-                    Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() -> /api/pin/new/");
-                    if (e.Request.QueryString["icon"] == null
-                        ||
-                        e.Request.QueryString["posx"] == null
-                        ||
-                        e.Request.QueryString["posz"] == null
-                        ||
-                        e.Request.QueryString["text"] == null
-                        ||
-                        e.Request.QueryString["steamid"] == null
-                        ||
-                        e.Request.QueryString["username"] == null
+                        Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() -> /api/pin/new/");
+                        if (e.Request.QueryString["icon"] == null
+                            ||
+                            e.Request.QueryString["posx"] == null
+                            ||
+                            e.Request.QueryString["posz"] == null
+                            ||
+                            e.Request.QueryString["text"] == null
+                            ||
+                            e.Request.QueryString["steamid"] == null
+                            ||
+                            e.Request.QueryString["username"] == null
                         )
-                    {
-                        Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() not enough parms"); 
-                        res.StatusCode = 500;
-                        textBytes = Encoding.UTF8.GetBytes("{ \"result\" : \"missing parameters\" }");
-                        res.ContentLength64 = textBytes.Length;
-                        res.Close(textBytes, true);
-                        return true;
+                        {
+                            //Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() not enough parms");
+
+                            SendHttpResponse(ref res,
+                                "{ \"result\" : \"missing parameters\" }",
+                                500,
+                                true,
+                                "application/json");
+                            
+                            return true;
+                        }
+                        else
+                        {
+                            Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() adding new pin");
+                            var pos = new Vector3(float.Parse(e.Request.QueryString["posx"]), 0,
+                                float.Parse(e.Request.QueryString["posz"]));
+                            var safePinsText = Regex.Replace(e.Request.QueryString["text"], @"[^a-zA-Z0-9 ]", "");
+                            var uuid = Guid.NewGuid().ToString();
+                            
+                            AddPin(e.Request.QueryString["steamid"], uuid, e.Request.QueryString["icon"],
+                                e.Request.QueryString["username"], pos, safePinsText);
+                          
+                            SendHttpResponse(ref res,
+                                "{ \"result\" : \"pin added\" }",
+                                200,
+                                true,
+                                "application/json");
+
+                            NeedSave = true;
+                            return true;
+                        }
+
+
                     }
                     else
                     {
-                        Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() adding new pin");
-                        var pos = new Vector3(float.Parse(e.Request.QueryString["posx"]), 0, float.Parse(e.Request.QueryString["posz"]));
-                        var safePinsText = Regex.Replace(e.Request.QueryString["text"], @"[^a-zA-Z0-9 ]", "");
-                        var uuid = Guid.NewGuid().ToString();
-                        //var timestamp = DateTime.Now - unixEpoch;
-                        // var pinId = $"{timestamp.TotalMilliseconds}-{UnityEngine.Random.Range(1000, 9999)}";
-                        // var pinId = uuId.ToString();
-                        AddPin(e.Request.QueryString["steamid"], uuid, e.Request.QueryString["icon"], e.Request.QueryString["username"], pos, safePinsText);
-                        res.StatusCode = 200;
-                        textBytes = Encoding.UTF8.GetBytes("{ \"result\" : \"pin added\" }");
-                        res.ContentLength64 = textBytes.Length;
-                        res.Close(textBytes, true);
+                        //Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() will try to clean url");
+                        var cleanedUrl = e.Request.RawUrl;
+
+                        var posOfParms = e.Request.RawUrl.IndexOf("?");
+                        if (posOfParms >= 0)
+                        {
+                            cleanedUrl =
+                                e.Request.RawUrl.Substring(0, posOfParms - 1);
+                        }
+
+                        //Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() cleanedUrl: {cleanedUrl}");
+                        var uuid = cleanedUrl.Substring(9);
+
+                        //Debug.Log($" WebMapAPI: Got request for uuid {uuid}");
+
+                        //Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() use existing uuid");
+                        var idx = pins.FindIndex(u => u.Contains(uuid));
+                        if (idx == -1)
+                        {
+                            Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() invalid uuid");
+                            SendHttpResponse(ref res,
+                                "{ \"result\" : \"pin not found\" }",
+                                404,
+                                true,
+                                "application/json");
+
+
+                            return true;
+                        }
+
+                        Debug.Log($" WebMapAPI: found at index {idx}: {pins[idx]}");
+                        var pin = pins[idx].Split(new char[] {','}, 7);
+
+                        //pin[6] = e.Request.QueryString.ToString();
+                        if (e.Request.QueryString["removePin"] != null)
+                        {
+                            Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() remove pin");
+
+                            if (!RemovePin(uuid))
+                            {
+                            
+
+                                SendHttpResponse(ref res,
+                                    "{ \"result\" : \"failure - could not delete\" }",
+                                    500,
+                                    true,
+                                    "application/json");
+                                return true;
+
+
+                            }
+                            else
+                            {
+                              
+                                SendHttpResponse(ref res,
+                                    "{ \"result\" : \"ok - deleted\" }",
+                                    200,
+                                    true,
+                                    "application/json");
+                                NeedSave = true;
+                                return true;
+                            }
+
+                        }
+                        else
+                        {
+                            //Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() edit pin");
+                            if (e.Request.QueryString["icon"] != null)
+                            {
+                                pin[2] = e.Request.QueryString["icon"];
+                            }
+
+                            if (e.Request.QueryString["posx"] != null)
+                            {
+                                pin[4] = e.Request.QueryString["posx"];
+                            }
+
+                            if (e.Request.QueryString["posz"] != null)
+                            {
+                                pin[5] = e.Request.QueryString["posz"];
+                            }
+
+                            if (e.Request.QueryString["text"] != null)
+                            {
+                                pin[6] = e.Request.QueryString["text"];
+                            }
+
+
+
+                            pins[idx] = $"{pin[0]},{pin[1]},{pin[2]},{pin[3]},{pin[4]},{pin[5]},{pin[6]}";
+                         
+                            UpdatePin(idx);
+                            SendHttpResponse(ref res,
+                                "{ \"result\" : \"ok - updated to " + pins[idx] +  "\" }",
+                                200,
+                                true,
+                                "application/json");
+
+
+                            NeedSave = true;
+                            return true;
+                        }
+
+                       
+
+                    
+
+                    }
+                }
+                else if (rawRequestPath.StartsWith("/api/msg/"))
+                {
+                    if (e.Request.QueryString["msg"] != null)
+                    {
+                        var messageToSend = e.Request.QueryString["msg"];
+                        var typeToSend = e.Request.QueryString["type"];
+                        //Debug.Log("MapDataServer.cs: Will send SendGlobalMessage(): " + messageToSend);
+
+                        Broadcast($"webchat\n{messageToSend}");
+
+                        SendGlobalMessage(messageToSend, 2);
+
+                        SendHttpResponse(ref res,
+                            "{ \"result\" : \"ok: " + messageToSend + "\" }",
+                            200,
+                            true,
+                            "application/json");
+
+
                         return true;
                     }
-                   
-                   
-                }
-                else
-                {
-                    Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() will try to clean url");
-                    var cleanedUrl = e.Request.RawUrl;
-
-                    var posOfParms = e.Request.RawUrl.IndexOf("?");
-                    if (posOfParms >= 0)
-                    {
-                        cleanedUrl =
-                            e.Request.RawUrl.Substring(0, posOfParms - 1);
-                    }
-
-                    Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() cleanedUrl: {cleanedUrl}");
-                    var uuid = cleanedUrl.Substring(9);
-
-                    Debug.Log($" WebMapAPI: Got request for uuid {uuid}");
-
-                    Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() use existing uuid");
-                    var idx = pins.FindIndex(u => u.Contains(uuid));
-                    if (idx == -1)
-                    {
-                        Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() invalid uuid");
-                        res.StatusCode = 404;
-                        textBytes = Encoding.UTF8.GetBytes("{ \"result\" : \"pin not found\" }");
-                        res.ContentLength64 = textBytes.Length;
-                        res.Close(textBytes, true);
-                        return true;
-                    }
-
-                    Debug.Log($" WebMapAPI: found at index {idx}: {pins[idx]}");
-                    var pin = pins[idx].Split(new char[] {','}, 7);
-
-                    //pin[6] = e.Request.QueryString.ToString();
-                    if (e.Request.QueryString["removePin"] != null)
-                    {
-                        Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() remove pin");
-                        res.StatusCode = 200;
-                        RemovePin(idx);
-                        textBytes = Encoding.UTF8.GetBytes("{ \"result\" : \"ok - deleted\" }");
-                    }
-                    else
-                    {
-                        Debug.Log($"WebMapAPI: ProcessSpecialAPIRoutes() edit pin");
-                        if (e.Request.QueryString["icon"] != null)
-                        {
-                            pin[2] = e.Request.QueryString["icon"];
-                        }
-
-                        if (e.Request.QueryString["posx"] != null)
-                        {
-                            pin[4] = e.Request.QueryString["posx"];
-                        }
-
-                        if (e.Request.QueryString["posz"] != null)
-                        {
-                            pin[5] = e.Request.QueryString["posz"];
-                        }
-
-                        if (e.Request.QueryString["text"] != null)
-                        {
-                            pin[6] = e.Request.QueryString["text"];
-                        }
-
-
-
-                        pins[idx] = $"{pin[0]},{pin[1]},{pin[2]},{pin[3]},{pin[4]},{pin[5]},{pin[6]}";
-                        res.StatusCode = 200;
-                        textBytes = Encoding.UTF8.GetBytes("{ \"result\" : \"ok - updated to "+ pins[idx] + "\" }");
-                        UpdatePin(idx);
-                    }
-
-                    NeedSave = true;
-
-                    res.ContentLength64 = textBytes.Length;
-                    res.Close(textBytes, true);
-                    return true;
 
                 }
-            }else if(rawRequestPath.StartsWith("/api/msg/"))
-            {
-                if (e.Request.QueryString["msg"] != null)
-                {
-                    var messageToSend = e.Request.QueryString["msg"];
-                    var typeToSend = e.Request.QueryString["type"];
-                    Debug.Log("MapDataServer.cs: Will send SendGlobalMessage(): " + messageToSend);
 
-                    Broadcast($"webchat\n{messageToSend}");
-                    
-                    
-                    SendGlobalMessage(messageToSend, 2);
+                SendHttpResponse(ref res,
+                    "{ \"result\" : \"command-unknown\" }",
+                    404,
+                    true,
+                    "application/json");
 
-                    SendHttpResponse(ref res,
-                        "{ \"result\" : \"ok: " + messageToSend + "\" }",
-                        200,
-                        true,
-                        "application/json");
-                
-                  
-                    return true;
-                }
-                  
+                return true;
             }
-
-            res.Headers.Add(HttpResponseHeader.CacheControl, "no-cache");
-            res.ContentType = "application/json";
-            res.StatusCode = 404;
-            textBytes = Encoding.UTF8.GetBytes("{ \"result\" : \"command-unknown\" }");
-            res.ContentLength64 = textBytes.Length;
-            res.Close(textBytes, true);
-            return true;
+            catch (Exception ex)
+            {
+                SendHttpResponse(ref res,
+                    "{ \"result\" : \"failure: exception on server end: "+ex+"\" }",
+                    500,
+                    true,
+                    "application/json");
+                return true;
+            }
 
         }
 
@@ -518,6 +497,33 @@ namespace WebMap {
             var pinParts = pin.Split(',');
             pins.RemoveAt(idx);
             webSocketHandler.Sessions.Broadcast($"rmpin\n{pinParts[1]}");
+        }
+        public bool RemovePin(string uuid)
+        {
+            var idx = pins.FindIndex(u => u.Contains(uuid));
+            if (idx == -1)
+            {
+                return false;
+            }
+            else
+            {
+                try
+                {
+                    var pin = pins[idx];
+                    var pinParts = pin.Split(',');
+                    pins.RemoveAt(idx);
+                    webSocketHandler.Sessions.Broadcast($"rmpin\n{pinParts[1]}");
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Debug.Log("MapDataServer.cs: " + ex);
+                    return false;
+                }
+               
+            }
+
+           
         }
 
         public void UpdatePin(int idx)
